@@ -1,0 +1,778 @@
+================================================================================
+LANE DETECTION DEBUG - Frames 29-50
+================================================================================
+
+
+================================================================================
+FRAME 29: 28.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 944
+  Left Lane Sum Value: 35700
+  Right Lane Position (x): 965
+  Right Lane Sum Value: 31620
+
+[IMAGE STATISTICS]
+  Total White Pixels: 10984
+  Mean Pixel Value: 1.35
+  Histogram Max: 35700
+  Histogram Min: 0
+  Histogram Mean: 831.14
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=944, Sum=35700
+  2. Position x=965, Sum=31620
+  3. Position x=943, Sum=23970
+  4. Position x=911, Sum=21675
+  5. Position x=966, Sum=21420
+  6. Position x=910, Sum=17850
+  7. Position x=1007, Sum=16830
+  8. Position x=901, Sum=16575
+  9. Position x=998, Sum=15810
+  10. Position x=890, Sum=15555
+
+================================================================================
+FRAME 30: 29.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 944
+  Left Lane Sum Value: 31875
+  Right Lane Position (x): 966
+  Right Lane Sum Value: 36465
+
+[IMAGE STATISTICS]
+  Total White Pixels: 10411
+  Mean Pixel Value: 1.28
+  Histogram Max: 36465
+  Histogram Min: 0
+  Histogram Mean: 771.77
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=966, Sum=36465
+  2. Position x=944, Sum=31875
+  3. Position x=965, Sum=31875
+  4. Position x=945, Sum=20910
+  5. Position x=912, Sum=19380
+  6. Position x=901, Sum=17340
+  7. Position x=911, Sum=17085
+  8. Position x=905, Sum=16830
+  9. Position x=998, Sum=15810
+  10. Position x=1007, Sum=15300
+
+================================================================================
+FRAME 31: 30.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 944
+  Left Lane Sum Value: 31365
+  Right Lane Position (x): 966
+  Right Lane Sum Value: 35700
+
+[IMAGE STATISTICS]
+  Total White Pixels: 9485
+  Mean Pixel Value: 1.17
+  Histogram Max: 35700
+  Histogram Min: 0
+  Histogram Mean: 680.66
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=966, Sum=35700
+  2. Position x=965, Sum=34425
+  3. Position x=944, Sum=31365
+  4. Position x=945, Sum=26520
+  5. Position x=912, Sum=20655
+  6. Position x=911, Sum=17085
+  7. Position x=997, Sum=15555
+  8. Position x=999, Sum=15045
+  9. Position x=998, Sum=14790
+  10. Position x=890, Sum=13770
+
+================================================================================
+FRAME 32: 31.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 944
+  Left Lane Sum Value: 32385
+  Right Lane Position (x): 966
+  Right Lane Sum Value: 30855
+
+[IMAGE STATISTICS]
+  Total White Pixels: 8536
+  Mean Pixel Value: 1.05
+  Histogram Max: 32385
+  Histogram Min: 0
+  Histogram Mean: 547.98
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=944, Sum=32385
+  2. Position x=966, Sum=30855
+  3. Position x=945, Sum=29835
+  4. Position x=965, Sum=29325
+  5. Position x=912, Sum=17595
+  6. Position x=998, Sum=15300
+  7. Position x=890, Sum=13515
+  8. Position x=999, Sum=13005
+  9. Position x=1018, Sum=11985
+  10. Position x=891, Sum=11220
+
+================================================================================
+FRAME 33: 32.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 945
+  Left Lane Sum Value: 20400
+  Right Lane Position (x): 965
+  Right Lane Sum Value: 19890
+
+[IMAGE STATISTICS]
+  Total White Pixels: 7671
+  Mean Pixel Value: 0.94
+  Histogram Max: 20400
+  Histogram Min: 0
+  Histogram Mean: 444.52
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=945, Sum=20400
+  2. Position x=966, Sum=19890
+  3. Position x=965, Sum=19890
+  4. Position x=944, Sum=19635
+  5. Position x=912, Sum=16575
+  6. Position x=891, Sum=15300
+  7. Position x=998, Sum=13770
+  8. Position x=1018, Sum=11475
+  9. Position x=999, Sum=10710
+  10. Position x=913, Sum=10710
+
+================================================================================
+FRAME 34: 33.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 892
+  Left Lane Sum Value: 7650
+  Right Lane Position (x): 965
+  Right Lane Sum Value: 7140
+
+[IMAGE STATISTICS]
+  Total White Pixels: 6687
+  Mean Pixel Value: 0.82
+  Histogram Max: 7650
+  Histogram Min: 0
+  Histogram Mean: 323.27
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=892, Sum=7650
+  2. Position x=945, Sum=7395
+  3. Position x=965, Sum=7140
+  4. Position x=966, Sum=6885
+  5. Position x=913, Sum=6885
+  6. Position x=857, Sum=6630
+  7. Position x=891, Sum=5610
+  8. Position x=858, Sum=5355
+  9. Position x=998, Sum=5100
+  10. Position x=999, Sum=4845
+
+================================================================================
+FRAME 35: 34.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: False
+  Left Lane Detected: False
+  Right Lane Detected: False
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 696
+  Left Lane Sum Value: 1785
+  Right Lane Position (x): 1080
+  Right Lane Sum Value: 1785
+
+[IMAGE STATISTICS]
+  Total White Pixels: 7656
+  Mean Pixel Value: 0.94
+  Histogram Max: 1785
+  Histogram Min: 0
+  Histogram Mean: 260.84
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1215, Sum=1785
+  2. Position x=1136, Sum=1785
+  3. Position x=1135, Sum=1785
+  4. Position x=1134, Sum=1785
+  5. Position x=1133, Sum=1785
+  6. Position x=1132, Sum=1785
+  7. Position x=1080, Sum=1785
+  8. Position x=1172, Sum=1785
+  9. Position x=1171, Sum=1785
+  10. Position x=1158, Sum=1785
+
+================================================================================
+FRAME 36: 35.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: False
+  Left Lane Detected: False
+  Right Lane Detected: False
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 696
+  Left Lane Sum Value: 1785
+  Right Lane Position (x): 1079
+  Right Lane Sum Value: 1785
+
+[IMAGE STATISTICS]
+  Total White Pixels: 10209
+  Mean Pixel Value: 1.26
+  Histogram Max: 1785
+  Histogram Min: 0
+  Histogram Mean: 265.89
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1137, Sum=1785
+  2. Position x=1136, Sum=1785
+  3. Position x=1135, Sum=1785
+  4. Position x=1134, Sum=1785
+  5. Position x=1133, Sum=1785
+  6. Position x=1132, Sum=1785
+  7. Position x=1131, Sum=1785
+  8. Position x=825, Sum=1785
+  9. Position x=826, Sum=1785
+  10. Position x=1149, Sum=1785
+
+================================================================================
+FRAME 37: 36.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: False
+  Left Lane Detected: False
+  Right Lane Detected: False
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 696
+  Left Lane Sum Value: 1785
+  Right Lane Position (x): 1079
+  Right Lane Sum Value: 1785
+
+[IMAGE STATISTICS]
+  Total White Pixels: 13814
+  Mean Pixel Value: 1.70
+  Histogram Max: 1785
+  Histogram Min: 0
+  Histogram Mean: 265.62
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1137, Sum=1785
+  2. Position x=1136, Sum=1785
+  3. Position x=1135, Sum=1785
+  4. Position x=1134, Sum=1785
+  5. Position x=1133, Sum=1785
+  6. Position x=1132, Sum=1785
+  7. Position x=1131, Sum=1785
+  8. Position x=827, Sum=1785
+  9. Position x=828, Sum=1785
+  10. Position x=1163, Sum=1785
+
+================================================================================
+FRAME 38: 37.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: False
+  Left Lane Detected: False
+  Right Lane Detected: False
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 700
+  Left Lane Sum Value: 2040
+  Right Lane Position (x): 1199
+  Right Lane Sum Value: 4335
+
+[IMAGE STATISTICS]
+  Total White Pixels: 14640
+  Mean Pixel Value: 1.80
+  Histogram Max: 4335
+  Histogram Min: 0
+  Histogram Mean: 287.01
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1200, Sum=4335
+  2. Position x=1199, Sum=4335
+  3. Position x=1198, Sum=4080
+  4. Position x=1201, Sum=3060
+  5. Position x=1197, Sum=2550
+  6. Position x=1213, Sum=2295
+  7. Position x=1212, Sum=2295
+  8. Position x=1211, Sum=2295
+  9. Position x=1210, Sum=2295
+  10. Position x=743, Sum=2040
+
+================================================================================
+FRAME 39: 38.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 734
+  Left Lane Sum Value: 10200
+  Right Lane Position (x): 1150
+  Right Lane Sum Value: 13770
+
+[IMAGE STATISTICS]
+  Total White Pixels: 22019
+  Mean Pixel Value: 2.71
+  Histogram Max: 13770
+  Histogram Min: 0
+  Histogram Mean: 408.80
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1150, Sum=13770
+  2. Position x=1136, Sum=12495
+  3. Position x=1149, Sum=12240
+  4. Position x=1151, Sum=11475
+  5. Position x=734, Sum=10200
+  6. Position x=731, Sum=9690
+  7. Position x=1137, Sum=9435
+  8. Position x=1113, Sum=9435
+  9. Position x=1135, Sum=8925
+  10. Position x=1112, Sum=8925
+
+================================================================================
+FRAME 40: 39.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 749
+  Left Lane Sum Value: 16320
+  Right Lane Position (x): 1086
+  Right Lane Sum Value: 23205
+
+[IMAGE STATISTICS]
+  Total White Pixels: 21660
+  Mean Pixel Value: 2.66
+  Histogram Max: 23205
+  Histogram Min: 0
+  Histogram Mean: 640.02
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1086, Sum=23205
+  2. Position x=1101, Sum=23205
+  3. Position x=1085, Sum=21165
+  4. Position x=1060, Sum=20910
+  5. Position x=1043, Sum=19380
+  6. Position x=1042, Sum=19125
+  7. Position x=1059, Sum=19125
+  8. Position x=1100, Sum=19125
+  9. Position x=1137, Sum=18360
+  10. Position x=749, Sum=16320
+
+================================================================================
+FRAME 41: 40.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 947
+  Left Lane Sum Value: 23460
+  Right Lane Position (x): 965
+  Right Lane Sum Value: 22695
+
+[IMAGE STATISTICS]
+  Total White Pixels: 21000
+  Mean Pixel Value: 2.58
+  Histogram Max: 23460
+  Histogram Min: 0
+  Histogram Mean: 695.41
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=947, Sum=23460
+  2. Position x=965, Sum=22695
+  3. Position x=966, Sum=22695
+  4. Position x=994, Sum=22440
+  5. Position x=1012, Sum=22185
+  6. Position x=995, Sum=22185
+  7. Position x=917, Sum=21930
+  8. Position x=898, Sum=21675
+  9. Position x=1038, Sum=21420
+  10. Position x=1054, Sum=20910
+
+================================================================================
+FRAME 42: 41.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 899
+  Left Lane Sum Value: 20400
+  Right Lane Position (x): 966
+  Right Lane Sum Value: 21675
+
+[IMAGE STATISTICS]
+  Total White Pixels: 18833
+  Mean Pixel Value: 2.32
+  Histogram Max: 21675
+  Histogram Min: 0
+  Histogram Mean: 640.42
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=966, Sum=21675
+  2. Position x=1036, Sum=20910
+  3. Position x=899, Sum=20400
+  4. Position x=1052, Sum=19635
+  5. Position x=918, Sum=19635
+  6. Position x=965, Sum=19125
+  7. Position x=917, Sum=18105
+  8. Position x=1090, Sum=14790
+  9. Position x=907, Sum=14790
+  10. Position x=947, Sum=14025
+
+================================================================================
+FRAME 43: 42.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 947
+  Left Lane Sum Value: 22185
+  Right Lane Position (x): 966
+  Right Lane Sum Value: 21930
+
+[IMAGE STATISTICS]
+  Total White Pixels: 23264
+  Mean Pixel Value: 2.86
+  Histogram Max: 22185
+  Histogram Min: 0
+  Histogram Mean: 693.55
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=947, Sum=22185
+  2. Position x=966, Sum=21930
+  3. Position x=917, Sum=21675
+  4. Position x=994, Sum=21420
+  5. Position x=1011, Sum=20910
+  6. Position x=1036, Sum=20655
+  7. Position x=899, Sum=20400
+  8. Position x=965, Sum=19635
+  9. Position x=918, Sum=19635
+  10. Position x=1052, Sum=17595
+
+================================================================================
+FRAME 44: 43.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 946
+  Left Lane Sum Value: 23205
+  Right Lane Position (x): 994
+  Right Lane Sum Value: 22695
+
+[IMAGE STATISTICS]
+  Total White Pixels: 22004
+  Mean Pixel Value: 2.71
+  Histogram Max: 23205
+  Histogram Min: 0
+  Histogram Mean: 699.26
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=947, Sum=23205
+  2. Position x=946, Sum=23205
+  3. Position x=994, Sum=22695
+  4. Position x=1012, Sum=22185
+  5. Position x=898, Sum=22185
+  6. Position x=966, Sum=21930
+  7. Position x=1037, Sum=21675
+  8. Position x=1053, Sum=20910
+  9. Position x=1011, Sum=20910
+  10. Position x=965, Sum=20655
+
+================================================================================
+FRAME 45: 44.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 946
+  Left Lane Sum Value: 23970
+  Right Lane Position (x): 1038
+  Right Lane Sum Value: 21930
+
+[IMAGE STATISTICS]
+  Total White Pixels: 19449
+  Mean Pixel Value: 2.39
+  Histogram Max: 23970
+  Histogram Min: 0
+  Histogram Mean: 618.24
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=946, Sum=23970
+  2. Position x=1038, Sum=21930
+  3. Position x=1054, Sum=21930
+  4. Position x=897, Sum=21930
+  5. Position x=916, Sum=20655
+  6. Position x=965, Sum=20145
+  7. Position x=995, Sum=18870
+  8. Position x=994, Sum=18615
+  9. Position x=1037, Sum=18360
+  10. Position x=1078, Sum=17850
+
+================================================================================
+FRAME 46: 45.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 946
+  Left Lane Sum Value: 24225
+  Right Lane Position (x): 1038
+  Right Lane Sum Value: 22950
+
+[IMAGE STATISTICS]
+  Total White Pixels: 18663
+  Mean Pixel Value: 2.30
+  Histogram Max: 24225
+  Histogram Min: 0
+  Histogram Mean: 646.13
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=946, Sum=24225
+  2. Position x=1038, Sum=22950
+  3. Position x=1055, Sum=22695
+  4. Position x=897, Sum=22440
+  5. Position x=1013, Sum=20910
+  6. Position x=994, Sum=20910
+  7. Position x=965, Sum=20400
+  8. Position x=995, Sum=20145
+  9. Position x=916, Sum=19125
+  10. Position x=896, Sum=18870
+
+================================================================================
+FRAME 47: 46.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 908
+  Left Lane Sum Value: 19890
+  Right Lane Position (x): 965
+  Right Lane Sum Value: 12750
+
+[IMAGE STATISTICS]
+  Total White Pixels: 14611
+  Mean Pixel Value: 1.80
+  Histogram Max: 19890
+  Histogram Min: 0
+  Histogram Mean: 496.32
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=908, Sum=19890
+  2. Position x=905, Sum=19635
+  3. Position x=897, Sum=18105
+  4. Position x=904, Sum=16320
+  5. Position x=915, Sum=15300
+  6. Position x=896, Sum=14025
+  7. Position x=867, Sum=13260
+  8. Position x=965, Sum=12750
+  9. Position x=1055, Sum=12750
+  10. Position x=868, Sum=12240
+
+================================================================================
+FRAME 48: 47.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 903
+  Left Lane Sum Value: 27540
+  Right Lane Position (x): 1004
+  Right Lane Sum Value: 23970
+
+[IMAGE STATISTICS]
+  Total White Pixels: 11099
+  Mean Pixel Value: 1.36
+  Histogram Max: 27540
+  Histogram Min: 0
+  Histogram Mean: 373.07
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=903, Sum=27540
+  2. Position x=1004, Sum=23970
+  3. Position x=1001, Sum=17340
+  4. Position x=904, Sum=17085
+  5. Position x=906, Sum=17085
+  6. Position x=775, Sum=14280
+  7. Position x=907, Sum=11220
+  8. Position x=1005, Sum=10200
+  9. Position x=774, Sum=9690
+  10. Position x=945, Sum=8925
+
+================================================================================
+FRAME 49: 48.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 905
+  Left Lane Sum Value: 34170
+  Right Lane Position (x): 1002
+  Right Lane Sum Value: 36210
+
+[IMAGE STATISTICS]
+  Total White Pixels: 14589
+  Mean Pixel Value: 1.79
+  Histogram Max: 36210
+  Histogram Min: 0
+  Histogram Mean: 510.40
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1002, Sum=36210
+  2. Position x=1003, Sum=36210
+  3. Position x=1006, Sum=35955
+  4. Position x=1005, Sum=35700
+  5. Position x=905, Sum=34170
+  6. Position x=902, Sum=30345
+  7. Position x=906, Sum=18615
+  8. Position x=903, Sum=18105
+  9. Position x=901, Sum=16320
+  10. Position x=904, Sum=15555
+
+================================================================================
+FRAME 50: 49.jpg
+================================================================================
+
+[LANE DETECTION RESULTS]
+  Lanes Found: True
+  Left Lane Detected: True
+  Right Lane Detected: True
+
+[HISTOGRAM DATA]
+  Threshold: 7000
+  Left Lane Position (x): 902
+  Left Lane Sum Value: 28305
+  Right Lane Position (x): 1007
+  Right Lane Sum Value: 29325
+
+[IMAGE STATISTICS]
+  Total White Pixels: 15609
+  Mean Pixel Value: 1.92
+  Histogram Max: 29325
+  Histogram Min: 0
+  Histogram Mean: 460.33
+
+[TOP 10 HISTOGRAM PEAKS]
+  1. Position x=1007, Sum=29325
+  2. Position x=1003, Sum=28815
+  3. Position x=902, Sum=28305
+  4. Position x=1004, Sum=21165
+  5. Position x=1008, Sum=20145
+  6. Position x=899, Sum=19380
+  7. Position x=901, Sum=17085
+  8. Position x=903, Sum=15300
+  9. Position x=898, Sum=14025
+  10. Position x=787, Sum=12495
+
+================================================================================
+End of Debug Report
+================================================================================
