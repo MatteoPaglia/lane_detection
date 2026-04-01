@@ -7,10 +7,10 @@ import os
 from pathlib import Path
 
 
-# Project root directory
-PROJECT_ROOT = Path(__file__).parent
+# Project root directory (parent of lane_detection folder)
+PROJECT_ROOT = Path(__file__).parent.parent
 
-# Dataset paths
+# Dataset paths (dataset folder is at workspace root level)
 DATASET_DIR = PROJECT_ROOT / "dataset"
 IMAGES_DIR = DATASET_DIR / "images"
 ANNOTATIONS_DIR = DATASET_DIR / "annotations"

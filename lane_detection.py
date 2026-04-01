@@ -14,6 +14,118 @@ from camera_init import camera, K, imageSize, principalPoint, focalLength, heigh
 from config import DATASET_DIR, IMAGES_DIR
 
 
+def draw_roi_on_image(image, src_points):
+    """
+    Disegna la ROI (Region of Interest) sull'immagine originale come un rettangolo verde.
+    
+    Args:
+        image: Immagine originale
+        src_points: Array numpy 4x2 dei punti della ROI in coordinate immagine
+        
+    Returns:
+        Immagine con ROI disegnata in verde
+    """
+    roi_image = image.copy()
+    h, w = roi_image.shape[:2]
+    
+    # Converti i punti della ROI in formato intero per disegnarli
+    src_points_int = src_points.astype(int)
+    
+    # Assicura che i punti siano dentro i limiti dell'immagine
+    src_points_int = np.clip(src_points_int, 0, [w-1, h-1])
+    
+    # Determina lo spessore della linea in base alle dimensioni dell'immagine
+    thickness = max(1, int(h / 180))  # Scala il thickness con l'altezza
+    circle_radius = max(2, int(h / 90))  # Scala il raggio dei cerchi
+    text_scale = max(0.4, h / 360)  # Scala il testo
+    
+    # Disegna il poligono della ROI in verde
+    cv2.polylines(roi_image, [src_points_int], isClosed=True, color=(0, 255, 0), thickness=thickness)
+    
+    # Disegna i vertici come cerchi verdi
+    for point in src_points_int:
+        cv2.circle(roi_image, tuple(point), circle_radius, (0, 255, 0), -1)
+    
+    # Aggiungi etichetta (ROI) in alto a sinistra
+    cv2.putText(roi_image, "ROI", (int(w*0.02), int(h*0.15)), cv2.FONT_HERSHEY_SIMPLEX, 
+                text_scale, (0, 255, 0), max(1, int(thickness*0.8)))
+    
+    return roi_image
+
+
+def project_lanes_to_original(original_image, src_points, left_x_bev, right_x_bev, bev_size):
+    """
+    Proietta le coordinate delle corsie rilevate dalla BEV all'immagine originale
+    e disegna le linee verdi.
+    
+    Args:
+        original_image: Immagine originale
+        src_points: I 4 punti della ROI in coordinate immagine
+        left_x_bev: Coordinata X della corsia sinistra nella BEV (0-bev_width)
+        right_x_bev: Coordinata X della corsia destra nella BEV (0-bev_width)
+        bev_size: (bev_width, bev_height) dimensione della BEV
+        
+    Returns:
+        Immagine originale con linee verdi delle corsie
+    """
+    lanes_image = original_image.copy()
+    
+    bev_width, bev_height = bev_size
+    
+    # I punti della ROI sono in ordine circolare: TL, TR, BR, BL
+    # Dobbiamo mappare le coordinate BEV indietro all'immagine originale
+    # Usiamo interpolazione lineare tra i punti della ROI
+    
+    # Punto top sinistra (lontano) e bottom sinistra (vicino)
+    pt_top_left = src_points[0]    # TL
+    pt_top_right = src_points[1]   # TR
+    pt_bottom_right = src_points[2] # BR
+    pt_bottom_left = src_points[3]  # BL
+    
+    # Per ogni coordinata X nella BEV, calcola la posizione Y corrispondente sulla strada
+    # La BEV ha: colonna 0 = sinistra (x_min), colonna bev_width-1 = destra (x_max)
+    
+    # Sinistra: interpola tra TL e BL
+    t_left = left_x_bev / (bev_width - 1) if bev_width > 1 else 0.5
+    left_top_orig = pt_top_left * (1 - t_left) + pt_bottom_left * t_left
+    left_bottom_orig = pt_top_left * (1 - t_left) + pt_bottom_left * t_left
+    
+    # Destra: interpola tra TR e BR
+    t_right = right_x_bev / (bev_width - 1) if bev_width > 1 else 0.5
+    right_top_orig = pt_top_right * (1 - t_right) + pt_bottom_right * t_right
+    right_bottom_orig = pt_top_right * (1 - t_right) + pt_bottom_right * t_right
+    
+    # In realtà, le linee nella BEV sono verticali, quindi mappiamo diversamente
+    # Una linea verticale nella BEV a x=left_x_bev corrisponde a una linea nell'immagine originale
+    # che passa per i due punti interpolati tra i lati sinistro/destro della ROI
+    
+    # Interpolazione lineare semplice:
+    # ratio_x = posizione relativa nella BEV (0 = sinistra, 1 = destra)
+    ratio_left = left_x_bev / max(bev_width - 1, 1)
+    ratio_right = right_x_bev / max(bev_width - 1, 1)
+    
+    # Punto sulla linea top della ROI
+    left_point_top = pt_top_left + (pt_top_right - pt_top_left) * ratio_left
+    right_point_top = pt_top_left + (pt_top_right - pt_top_left) * ratio_right
+    
+    # Punto sulla linea bottom della ROI
+    left_point_bottom = pt_bottom_left + (pt_bottom_right - pt_bottom_left) * ratio_left
+    right_point_bottom = pt_bottom_left + (pt_bottom_right - pt_bottom_left) * ratio_right
+    
+    # Disegna linee verdi per le corsie rilevate
+    cv2.line(lanes_image, 
+             tuple(left_point_top.astype(int)), 
+             tuple(left_point_bottom.astype(int)), 
+             (0, 255, 0), 3, cv2.LINE_AA)
+    
+    cv2.line(lanes_image,
+             tuple(right_point_top.astype(int)),
+             tuple(right_point_bottom.astype(int)),
+             (0, 255, 0), 3, cv2.LINE_AA)
+    
+    return lanes_image
+
+
 def check_dataset_exists() -> bool:
     """
     Check if dataset images already exist in multiple possible locations.
@@ -76,12 +188,15 @@ def get_image_files() -> list:
     return sorted(images)
 
 
-def get_all_folder_images() -> list:
+def get_all_folder_images(max_folders=None) -> list:
     """
     Get all image files from all scene folders in dataset/archive/ in order.
     Processes folders like 008, 016, 020, 021, 024, 032, 033, 039, 040, 043, 046
     Each folder contains: camera/front_camera/*.jpg
     Skips __MACOSX folder
+    
+    Args:
+        max_folders: Maximum number of folders to process. None = process all folders
     
     Returns:
         list: List of (image_path, folder_name) tuples sorted by folder name numerically
@@ -108,6 +223,10 @@ def get_all_folder_images() -> list:
     
     # Sort numerically by folder name
     scene_folders.sort(key=lambda x: int(x.name))
+    
+    # Apply limit if specified
+    if max_folders is not None and max_folders > 0:
+        scene_folders = scene_folders[:max_folders]
     
     print(f"\n[INFO] Processing {len(scene_folders)} scene folders from archive...")
     
@@ -493,20 +612,18 @@ def main():
     print("\n[INFO] Computing IPM (Inverse Perspective Mapping) matrix...")
     fx, fy = focalLength
     cx, cy = principalPoint
-    output_width, output_height = imageSize
     
-    homography_matrix = compute_homography_matrix(
+    # compute_homography_matrix now returns the matrix, BEV size, and ROI src_points
+    homography_matrix, (bev_width, bev_height), roi_src_points = compute_homography_matrix(
         fx=fx,
         fy=fy,
         cx=cx,
         cy=cy,
         h=height,
-        pitch=pitch,
-        output_width=output_width,
-        output_height=output_height
+        pitch=pitch
     )
     
-    print("[INFO] IPM matrix computed successfully")
+    print(f"[INFO] IPM matrix computed successfully - BEV size: {bev_width}x{bev_height}")
     
     # Create output directories
     output_lanes_dir = OUTPUT_DIR / "lanes_detected"
@@ -515,9 +632,29 @@ def main():
     output_lanes_dir.mkdir(parents=True, exist_ok=True)
     output_bev_dir.mkdir(parents=True, exist_ok=True)
     
-    # Get image files from ALL scene folders
-    print("\n[INFO] Scanning all scene folders for images...")
-    image_files = get_all_folder_images()
+    # Ask user how many folders to analyze
+    print("\n" + "=" * 60)
+    print("FOLDER SELECTION")
+    print("=" * 60)
+    try:
+        max_folders_input = input("Quante cartelle vuoi analizzare? (premi INVIO per tutte): ").strip()
+        if max_folders_input == "":
+            max_folders = None
+            print("[INFO] Analizzerai TUTTE le cartelle disponibili")
+        else:
+            max_folders = int(max_folders_input)
+            if max_folders <= 0:
+                print("[WARNING] Numero non valido, analizzerai tutte le cartelle")
+                max_folders = None
+            else:
+                print(f"[INFO] Analizzerai le prime {max_folders} cartelle")
+    except ValueError:
+        print("[WARNING] Input non valido, analizzerai tutte le cartelle")
+        max_folders = None
+    
+    # Get image files from specified number of scene folders
+    print("\n[INFO] Scanning scene folders for images...")
+    image_files = get_all_folder_images(max_folders=max_folders)
     
     total_images = len(image_files)
     print(f"\n[INFO] Found {total_images} images to process across all scenes")
@@ -531,6 +668,8 @@ def main():
     # Store results for video playback
     result_images = {}
     result_binary_images = {}  # Store binary images separately
+    result_secondary_images = {}  # Store analysis window (histogram only)
+    result_binary_display_images = {}  # Store binary map for display
     
     # Track statistics by scene
     stats_by_scene = {}
@@ -556,7 +695,7 @@ def main():
             
             # 2. Apply IPM - transform to Bird's Eye View
             bev_image = calculate_ipm(original_image, homography_matrix, 
-                                      output_size=(output_width, output_height))
+                                      output_size=(bev_width, bev_height))
             
             # 3. Preprocess BEV image - get binary image
             binary_bev = preprocess_bev_image(bev_image)
@@ -575,33 +714,70 @@ def main():
             output_path_bev = output_bev_dir / f"{scene_folder}_{image_path.stem}_bev.jpg"
             cv2.imwrite(str(output_path_bev), result_bev)
             
-            # 6. Create side-by-side view: Original vs BEV with lanes (binary shown separately)
+            # 6. Create WINDOW 1: Original with lanes (sx) | BEV with lanes (dx)
             h_orig, w_orig = original_image.shape[:2]
             h_bev, w_bev = result_bev.shape[:2]
             
-            # Resize all images to a manageable size for display
-            display_height = 360  # 360px height for display
+            # Resize all images to a manageable size for display (360px height)
+            display_height = 360
             
-            # Resize original image
+            # Original image
             scale_orig = display_height / h_orig
             w_orig_scaled = int(w_orig * scale_orig)
             original_resized = cv2.resize(original_image, (w_orig_scaled, display_height))
             
-            # Resize BEV with lanes to match display height
+            # Project lanes to original image (full size first, then scale)
+            if debug_data['lane_found']:
+                left_x_bev = debug_data['left_x_base']
+                right_x_bev = debug_data['right_x_base']
+                original_with_lanes = project_lanes_to_original(original_image, roi_src_points, 
+                                                                 left_x_bev, right_x_bev, 
+                                                                 (bev_width, bev_height))
+            else:
+                original_with_lanes = original_image.copy()
+            
+            # Resize to display size
+            original_with_lanes_resized = cv2.resize(original_with_lanes, (w_orig_scaled, display_height))
+            
+            # BEV with lanes
             scale_bev = display_height / h_bev
             w_bev_scaled = int(w_bev * scale_bev)
             result_bev_resized = cv2.resize(result_bev, (w_bev_scaled, display_height))
             
-            # Concatenate only Original and BEV with lanes
-            # Original (sx) | BEV con linee rilevate (dx)
-            side_by_side = np.hstack([original_resized, result_bev_resized])
+            # Create side-by-side: Original with lanes | BEV with lanes (WINDOW 1)
+            side_by_side = np.hstack([original_with_lanes_resized, result_bev_resized])
             
             # Save side-by-side result
             output_path_side = output_lanes_dir / f"{scene_folder}_{image_path.stem}_comparison.jpg"
             cv2.imwrite(str(output_path_side), side_by_side)
             
-            # Store for video playback
+            # Store for main video playback (WINDOW 1)
             result_images[frame_key] = side_by_side
+            
+            # 7. Create WINDOW 2: Histogram only
+            # Histogram visualization
+            histogram_binary_viz = visualize_histogram_and_binary(binary_bev, min_peak_threshold=debug_data['threshold'])
+            # Extract left part (histogram) - histogram_viz is 400 wide
+            histogram_only = histogram_binary_viz[:, :400]
+            # Extract right part (binary map) - binary_viz is 400 wide
+            binary_map_only = histogram_binary_viz[:, 400:]
+            
+            # Resize histogram viz to match display height
+            h_hist, w_hist = histogram_only.shape[:2]
+            scale_hist = display_height / h_hist
+            histogram_resized = cv2.resize(histogram_only, 
+                                          (int(w_hist * scale_hist), display_height))
+            # Resize binary map to match display height
+            binary_map_resized = cv2.resize(binary_map_only, 
+                                           (int(w_hist * scale_hist), display_height))
+            
+            # Store for secondary display (WINDOW 2)
+            frame_key_secondary = f"{frame_key}_analysis"
+            result_secondary_images[frame_key_secondary] = histogram_resized
+            
+            # Store for tertiary display (WINDOW 3)
+            frame_key_tertiary = f"{frame_key}_binary"
+            result_binary_display_images[frame_key_tertiary] = binary_map_resized
             
             print(f"✓ {'LANES FOUND' if lanes_detected else 'no lanes'}")
             
@@ -678,19 +854,17 @@ def main():
                 # Show main window (Original vs BEV with lanes)
                 cv2.imshow("Lane Detection - Original vs BEV with Detected Lanes", display_image)
                 
-                # Get binary image and show histogram + binary visualization
-                if frame_name in result_binary_images:
-                    binary_image = result_binary_images[frame_name]
-                    
-                    # Create histogram + binary visualization
-                    histogram_binary_viz = visualize_histogram_and_binary(binary_image)
-                    
-                    # Resize for display
-                    h, w = histogram_binary_viz.shape[:2]
-                    histogram_binary_viz_resized = cv2.resize(histogram_binary_viz, (800, 300))
-                    
-                    cv2.imshow("Histogram (Left) vs Binary (Right) - Column Sum Values", 
-                              histogram_binary_viz_resized)
+                # Show secondary analysis window (Histogram)
+                frame_key_secondary = f"{frame_name}_analysis"
+                if frame_key_secondary in result_secondary_images:
+                    secondary_image = result_secondary_images[frame_key_secondary]
+                    cv2.imshow("Analysis - Histogram", secondary_image)
+                
+                # Show tertiary window (Binary Map)
+                frame_key_tertiary = f"{frame_name}_binary"
+                if frame_key_tertiary in result_binary_display_images:
+                    binary_display = result_binary_display_images[frame_key_tertiary]
+                    cv2.imshow("Binary Map", binary_display)
                 
                 # Delay between frames (100ms = 10 fps)
                 key = cv2.waitKey(100) & 0xFF
@@ -706,7 +880,7 @@ def main():
         print("\n✓ Video playback completed")
 
 
-def visualize_histogram_and_binary(binary_image):
+def visualize_histogram_and_binary(binary_image, min_peak_threshold=7000):
     """
     Crea una visualizzazione con:
     - SINISTRA: Istogramma with detected peaks in green
@@ -714,6 +888,7 @@ def visualize_histogram_and_binary(binary_image):
     
     Args:
         binary_image: Immagine binaria del rilevamento corsie
+        min_peak_threshold: Soglia dinamica per considerare un picco valido
         
     Returns:
         ndarray: Immagine combinata istogramma + binary
@@ -730,7 +905,7 @@ def visualize_histogram_and_binary(binary_image):
     right_x_base = np.argmax(histogram[midpoint:]) + midpoint
     left_value = histogram[left_x_base]
     right_value = histogram[right_x_base]
-    threshold = 7000
+    threshold = min_peak_threshold  # Usa il parametro passato
     
     # Crea figura per istogramma (sinistra)
     hist_height, hist_width = 300, 400
@@ -786,7 +961,7 @@ def visualize_histogram_and_binary(binary_image):
 def find_lanes_and_draw(bev_image, binary_image):
     """
     Calcola l'istogramma sulla metà inferiore dell'immagine binaria, trova i picchi
-    e disegna le linee rilevate.
+    e disegna le linee rilevate. Usa una soglia dinamica basata sull'altezza dell'immagine.
     
     Returns:
         tuple: (output_image, debug_data) - immagine e dati di debug
@@ -804,13 +979,24 @@ def find_lanes_and_draw(bev_image, binary_image):
     # Dividiamo l'istogramma a metà per cercare la corsia di sinistra e di destra
     midpoint = int(histogram.shape[0] / 2)
     
-    # np.argmax trova l'indice (la coordinata x) del valore massimo nell'array
-    left_x_base = np.argmax(histogram[:midpoint])
-    right_x_base = np.argmax(histogram[midpoint:]) + midpoint
+    # Margin Cropping: Ignora i bordi estremi (10% sui margini) 
+    # per evitare di rilevare auto parcheggiate e marciapiedi
+    margin = int(width * 0.1)  # 10% dei margini
     
-    # Soglia minima per considerare una linea valida
-    # (valore assoluto di 7000)
-    min_peak_threshold = 7000
+    # Per la corsia sinistra: cerca nel range [margin : midpoint - margin]
+    left_search_range = histogram[margin:midpoint - margin]
+    left_offset = np.argmax(left_search_range) + margin
+    left_x_base = left_offset
+    
+    # Per la corsia destra: cerca nel range [midpoint + margin : width - margin]
+    right_search_range = histogram[midpoint + margin:width - margin]
+    right_offset = np.argmax(right_search_range) + midpoint + margin
+    right_x_base = right_offset
+    
+    # Soglia minima dinamica basata sull'altezza effettiva dell'immagine
+    # Se l'altezza è 400 (anzichè 1080), la soglia è scalata proporzionalmente
+    # Baseline: 7000 per altezza 1080, scala lineare per altre altezze
+    min_peak_threshold = int((height / 1080.0) * 7000) if height > 0 else 7000
     
     lane_found = False
     left_detected = False
