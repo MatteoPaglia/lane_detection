@@ -55,7 +55,7 @@ import cv2
 import numpy as np
 
 def compute_homography_matrix(fx, fy, cx, cy, h, pitch=0, 
-                              x_min=-1.85, x_max=1.85, 
+                              x_min=-2.25, x_max=2.25, 
                               z_min=4.0, z_max=30.0, 
                               bev_width=400, bev_height=800):
     """

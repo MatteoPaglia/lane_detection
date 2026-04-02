@@ -739,6 +739,15 @@ def main():
             # Resize to display size
             original_with_lanes_resized = cv2.resize(original_with_lanes, (w_orig_scaled, display_height))
             
+            # Aggiungi il tipo di linea sulla immagine originale (sinistra e destra)
+            if debug_data['lane_found']:
+                if debug_data['left_type'] is not None:
+                    cv2.putText(original_with_lanes_resized, f"L:{debug_data['left_type']}", 
+                                (10, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                if debug_data['right_type'] is not None:
+                    cv2.putText(original_with_lanes_resized, f"R:{debug_data['right_type']}", 
+                                (w_orig_scaled - 120, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            
             # BEV with lanes
             scale_bev = display_height / h_bev
             w_bev_scaled = int(w_bev * scale_bev)
@@ -958,6 +967,25 @@ def visualize_histogram_and_binary(binary_image, min_peak_threshold=7000):
     return combined
 
 
+def classify_lane_type(histogram_value):
+    """
+    Classifica il tipo di linea (Solid o Dashed) basandosi sul valore dell'istogramma.
+    
+    Una linea CONTINUA (Solid) ha histogram_value > 23000
+    Una linea TRATTEGGIATA (Dashed) ha histogram_value <= 23000
+    
+    Args:
+        histogram_value: Valore del picco nell'istogramma
+    
+    Returns:
+        str: "Solid" se histogram_value > 23000, altrimenti "Dashed"
+    """
+    if histogram_value > 23000:
+        return "Solid"
+    else:
+        return "Dashed"
+
+
 def find_lanes_and_draw(bev_image, binary_image):
     """
     Calcola l'istogramma sulla metà inferiore dell'immagine binaria, trova i picchi
@@ -1001,11 +1029,18 @@ def find_lanes_and_draw(bev_image, binary_image):
     lane_found = False
     left_detected = False
     right_detected = False
+    left_type = None
+    right_type = None
     
     # Verifichiamo e disegniamo la linea sinistra
     left_value = histogram[left_x_base]
     if left_value > min_peak_threshold:
         cv2.line(output_image, (left_x_base, 0), (left_x_base, height), (0, 255, 0), 3)
+        # Classifica il tipo di linea
+        left_type = classify_lane_type(left_value)
+        # Disegna il tipo di linea sulla BEV (in alto a sinistra della linea)
+        cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), 40), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         lane_found = True
         left_detected = True
         
@@ -1013,6 +1048,11 @@ def find_lanes_and_draw(bev_image, binary_image):
     right_value = histogram[right_x_base]
     if right_value > min_peak_threshold:
         cv2.line(output_image, (right_x_base, 0), (right_x_base, height), (0, 255, 0), 3)
+        # Classifica il tipo di linea
+        right_type = classify_lane_type(right_value)
+        # Disegna il tipo di linea sulla BEV (in alto a destra della linea)
+        cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), 40), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         lane_found = True
         right_detected = True
     
@@ -1034,6 +1074,8 @@ def find_lanes_and_draw(bev_image, binary_image):
         'threshold': min_peak_threshold,
         'left_detected': left_detected,
         'right_detected': right_detected,
+        'left_type': left_type,
+        'right_type': right_type,
         'lane_found': lane_found,
         'binary_image_white_pixels': np.sum(binary_image) // 255,
         'binary_image_mean': np.mean(binary_image)

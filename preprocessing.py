@@ -18,36 +18,22 @@ def preprocess_bev_image(bev_image):
     sobelx = cv2.Sobel(blur, cv2.CV_64F, 1, 0, ksize=3)
     abs_sobelx = np.absolute(sobelx)
     
-    # 4. Calcola la luminosità media per ogni riga
-    # Se una riga è molto chiara (strisce bianche), ha media alta
-    brightness_per_row = np.mean(blur, axis=1)
-    
-    # 5. Identifica le righe troppo chiare (probabilmente strisce pedonali)
-    brightness_threshold = np.percentile(brightness_per_row, 50)
-    bright_rows = brightness_per_row > brightness_threshold
-    
-    # 6. Scaliamo Sobel-X tra 0 e 255
+    # 4. Scaliamo Sobel-X tra 0 e 255
     scaled_sobel = np.uint8(255 * abs_sobelx / (np.max(abs_sobelx) + 1e-8))
     
-    # 7. Dilation per ricostruire le corsie
-    kernel_dilation = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    cleaned = cv2.dilate(scaled_sobel, kernel_dilation, iterations=1)
-    
-    # 8. Sogliatura (Thresholding)
+    # 5. Sogliatura (Thresholding)
     thresh_min = 70
     thresh_max = 255
-    _, binary_output = cv2.threshold(cleaned, thresh_min, thresh_max, cv2.THRESH_BINARY)
+    _, binary_output = cv2.threshold(scaled_sobel, thresh_min, thresh_max, cv2.THRESH_BINARY)
     
-    # 9. IDENTIFICA le righe piene di bianco (strisce pedonali)
-    # Somma quanti pixel bianchi (255) ci sono in ogni riga
-    row_white_pixel_count = np.sum(binary_output == 255, axis=1)
+    # 6. Dilation per ricostruire le corsie tratteggiate
+    kernel_dilation = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    cleaned = cv2.dilate(binary_output, kernel_dilation, iterations=1)
     
-    # 10. Se una riga ha troppi pixel bianchi, è una striscia
-    # Azzera il top 30% delle righe più piene
+    # 7. IDENTIFICA e AZZERA le righe piene di bianco (strisce pedonali)
+    row_white_pixel_count = np.sum(cleaned == 255, axis=1)
     white_pixel_threshold = np.percentile(row_white_pixel_count, 70)
     stripe_rows = row_white_pixel_count > white_pixel_threshold
+    cleaned[stripe_rows, :] = 0
     
-    # 11. Azzera le righe piene di strisce
-    binary_output[stripe_rows, :] = 0
-    
-    return binary_output
+    return cleaned
