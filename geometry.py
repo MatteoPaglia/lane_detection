@@ -100,3 +100,28 @@ def compute_homography_matrix(fx, fy, cx, cy, h, pitch=0,
 def calculate_ipm(image, homography_matrix, output_size):
     """Applica la trasformazione."""
     return cv2.warpPerspective(image, homography_matrix, output_size, flags=cv2.INTER_LINEAR)
+
+
+def estimate_distance(v_bottom, fy, cy, h):
+    """
+    Calcola la distanza Z in metri di un ostacolo inquadrato,
+    assumendo che il punto più basso del bounding box (v_bottom) 
+    tocchi il suolo (piano stradale dove asse Y = h).
+    
+    Args:
+        v_bottom: Coordinata y in pixel del bordo inferiore dell'ostacolo.
+        fy: Lunghezza focale su asse y della telecamera.
+        cy: Centro ottico asse y (linea dell'orizzonte approssimata).
+        h: Altezza della telecamera rispetto al suolo in metri.
+        
+    Returns:
+        Distanza (Z) in metri, o infinito se sopra l'orizzonte.
+    """
+    # Se il punto è sopra o esattamente sull'orizzonte camera (cy), 
+    # vuol dire che teoricamente non tocca terra o è all'infinito.
+    if v_bottom <= cy:
+        return float('inf')
+        
+    # Inversa del Pinhole Camera Model (v = h*fy/Z + cy) -> Z = h*fy / (v - cy)
+    distance_z = (h * fy) / (v_bottom - cy)
+    return distance_z
