@@ -15,59 +15,6 @@ from preprocessing import preprocess_bev_image
 from yolo import ObstacleDetector
 
 
-def project_lanes_to_original(original_image, src_points, left_x_bev, right_x_bev, bev_size, 
-                              left_detected=False, right_detected=False):
-    """
-    Proietta le coordinate delle corsie rilevate dalla BEV all'immagine originale
-    e disegna le linee verdi.
-    
-    Args:
-        original_image: Immagine originale
-        src_points: I 4 punti della ROI in coordinate immagine
-        left_x_bev: Coordinata X della corsia sinistra nella BEV
-        right_x_bev: Coordinata X della corsia destra nella BEV
-        bev_size: (bev_width, bev_height) dimensione della BEV
-        left_detected: Flag se la linea sinistra è stata rilevata
-        right_detected: Flag se la linea destra è stata rilevata
-        
-    Returns:
-        Immagine originale con linee verdi delle corsie (solo quelle rilevate)
-    """
-    lanes_image = original_image.copy()
-    
-    bev_width, bev_height = bev_size
-    
-    pt_top_left = src_points[0]
-    pt_top_right = src_points[1]
-    pt_bottom_right = src_points[2]
-    pt_bottom_left = src_points[3]
-    
-    ratio_left = left_x_bev / max(bev_width - 1, 1)
-    ratio_right = right_x_bev / max(bev_width - 1, 1)
-    
-    left_point_top = pt_top_left + (pt_top_right - pt_top_left) * ratio_left
-    right_point_top = pt_top_left + (pt_top_right - pt_top_left) * ratio_right
-    
-    left_point_bottom = pt_bottom_left + (pt_bottom_right - pt_bottom_left) * ratio_left
-    right_point_bottom = pt_bottom_left + (pt_bottom_right - pt_bottom_left) * ratio_right
-    
-    # Disegna solo la linea sinistra se è stata rilevata
-    if left_detected:
-        cv2.line(lanes_image, 
-                 tuple(left_point_top.astype(int)), 
-                 tuple(left_point_bottom.astype(int)), 
-                 (0, 255, 0), 3, cv2.LINE_AA)
-    
-    # Disegna solo la linea destra se è stata rilevata
-    if right_detected:
-        cv2.line(lanes_image,
-                 tuple(right_point_top.astype(int)),
-                 tuple(right_point_bottom.astype(int)),
-                 (0, 255, 0), 3, cv2.LINE_AA)
-    
-    return lanes_image
-
-
 def classify_lane_type(binary_image, x_center, window_size=5):
     """
     Classifica il tipo di linea analizzando una finestra (strip) centrata attorno alla x.
@@ -112,13 +59,16 @@ def classify_lane_type(binary_image, x_center, window_size=5):
 def find_lanes_and_draw(bev_image, binary_image):
     """
     Calcola l'istogramma sulla metà inferiore dell'immagine binaria, trova i picchi
-    e disegna le linee rilevate. Usa una soglia dinamica basata sull'altezza dell'immagine.
+    ed estrae i pixel adiacenti ai picchi per tracciare le curve reali.
     
     Returns:
-        tuple: (output_image, debug_data) - immagine e dati di debug
+        tuple: (output_image, debug_data, lanes_bev_only)
     """
     output_image = bev_image.copy()
     height, width = binary_image.shape
+    
+    # Immagine BEV nera per disegnare solo le corsie curve
+    lanes_bev_only = np.zeros((height, width, 3), dtype=np.uint8)
     
     # DEBUG: Salva la binary_image per ogni frame
     cv2.imwrite(f"debug_binary_{len(str(binary_image.sum()))}.png", binary_image)
@@ -154,30 +104,44 @@ def find_lanes_and_draw(bev_image, binary_image):
     print(f"\n🔍 DEBUG - White pixels in binary_image: {white_pixels}")
     print(f"🔍 Histogram max: {np.max(histogram)}, Threshold: {min_peak_threshold}")
     
-    # Verifichiamo e disegniamo la linea sinistra
+    window_width = 30  # Finestra di ricerca +/- 30 pixel
+    
+    # Verifichiamo la linea sinistra e raccogliamo i pixel curvi
     left_value = histogram[left_x_base]
     print(f"🔍 LEFT ({left_x_base}): {left_value} (threshold: {min_peak_threshold}) - {'✅ DETECTED' if left_value > min_peak_threshold else '❌ MISSED'}")
     if left_value > min_peak_threshold:
         left_type = classify_lane_type(binary_image, left_x_base)
         if left_type != "None":
-            cv2.line(output_image, (left_x_base, 0), (left_x_base, height), (0, 255, 0), 3)
+            mask = np.zeros_like(binary_image)
+            mask[:, max(0, left_x_base - window_width):min(width, left_x_base + window_width)] = 1
+            pts = (binary_image == 255) & (mask == 1)
+            lanes_bev_only[pts] = (0, 255, 0)
+            
             cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             lane_found = True
             left_detected = True
         
-    # Verifichiamo e disegniamo la linea destra
+    # Verifichiamo la linea destra e raccogliamo i pixel curvi
     right_value = histogram[right_x_base]
     print(f"🔍 RIGHT ({right_x_base}): {right_value} (threshold: {min_peak_threshold}) - {'✅ DETECTED' if right_value > min_peak_threshold else '❌ MISSED'}")
     if right_value > min_peak_threshold:
         right_type = classify_lane_type(binary_image, right_x_base)
         if right_type != "None":
-            cv2.line(output_image, (right_x_base, 0), (right_x_base, height), (0, 255, 0), 3)
+            mask = np.zeros_like(binary_image)
+            mask[:, max(0, right_x_base - window_width):min(width, right_x_base + window_width)] = 1
+            pts = (binary_image == 255) & (mask == 1)
+            lanes_bev_only[pts] = (0, 255, 0)
+            
             cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             lane_found = True
             right_detected = True
     
+    # Sovrapponi i pixel estratti sulla BEV visuale
+    green_mask = cv2.inRange(lanes_bev_only, (0, 255, 0), (0, 255, 0))
+    output_image[green_mask == 255] = (0, 255, 0)
+
     # Gestione del fallimento
     if not lane_found:
         font = cv2.FONT_HERSHEY_SIMPLEX
@@ -202,7 +166,7 @@ def find_lanes_and_draw(bev_image, binary_image):
         'binary_image_mean': np.mean(binary_image)
     }
     
-    return output_image, debug_data
+    return output_image, debug_data, lanes_bev_only
 
 
 def main():
@@ -257,7 +221,7 @@ def main():
         bev_width=400, bev_height=800
     )
     
-    # Ciclo su tutte le immagini
+        # Ciclo su tutte le immagini
     for idx, image_path in enumerate(image_paths, 1):
         print(f"\n[{idx}/{len(image_paths)}] Processing: {Path(image_path).name}")
         
@@ -275,18 +239,21 @@ def main():
         # Preprocessing binario
         binary_bev = preprocess_bev_image(bev_image)
         
-        # Trova e disegna corsie
-        result_bev, debug_data = find_lanes_and_draw(bev_image, binary_bev)
+        # OBIETTIVO 2: Trova e disegna corsie estraendo le curve su 'lanes_bev_only'
+        result_bev, debug_data, lanes_bev_only = find_lanes_and_draw(bev_image, binary_bev)
         
-        # Proietta linee sull'immagine originale
+        # Proietta linee curve sull'immagine originale
         if debug_data['lane_found']:
-            left_x_bev = debug_data['left_x_base']
-            right_x_bev = debug_data['right_x_base']
-            original_with_lanes = project_lanes_to_original(original_image, roi_src_points, 
-                                                             left_x_bev, right_x_bev, 
-                                                             (bev_width, bev_height),
-                                                             left_detected=debug_data['left_detected'],
-                                                             right_detected=debug_data['right_detected'])
+            # Omografia Inversa
+            inv_H = np.linalg.inv(H)
+            
+            # Warp Perspective: mappa la BEV con le curve verdi all'immagine originale
+            warped_lanes = cv2.warpPerspective(lanes_bev_only, inv_H, (w_orig, h_orig))
+            
+            # Estrai e sovrapponi solo i pixel verdi
+            mask_warped_green = cv2.inRange(warped_lanes, (0, 255, 0), (0, 255, 0))
+            original_with_lanes = original_image.copy()
+            original_with_lanes[mask_warped_green == 255] = (0, 255, 0)
         else:
             original_with_lanes = original_image.copy()
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -307,8 +274,8 @@ def main():
         # Applica YOLO Object Detection sull'immagine con le corsie disegnate
         original_with_lanes = yolo_detector.detect_and_draw(original_with_lanes)
         
-        # Ridimensiona per display
-        display_height = 720
+        # Ridimensiona per display (480 per finestra compatta)
+        display_height = 480
         
         # Original con lanes
         scale_orig = display_height / h_orig
