@@ -62,16 +62,21 @@ def find_lanes_and_draw(bev_image, binary_image):
     ed estrae i pixel adiacenti ai picchi per tracciare le curve reali.
     
     Returns:
-        tuple: (output_image, debug_data, lanes_bev_only)
+        tuple: (output_image, debug_data, lanes_bev_only, lanes_bev_for_warping)
     """
     output_image = bev_image.copy()
     height, width = binary_image.shape
     
-    # Immagine BEV nera per disegnare solo le corsie curve
+    # Immagine BEV nera per disegnare solo i pixel bianchi colorati (per visualizzazione)
     lanes_bev_only = np.zeros((height, width, 3), dtype=np.uint8)
     
-    # DEBUG: Salva la binary_image per ogni frame
-    cv2.imwrite(f"debug_binary_{len(str(binary_image.sum()))}.png", binary_image)
+    # Immagine BEV per il warping: contiene linee verticali complete
+    lanes_bev_for_warping = np.zeros((height, width, 3), dtype=np.uint8)
+    
+    # DEBUG: Salva la binary_image per ogni frame in output/debug
+    debug_dir = Path("output/debug")
+    debug_dir.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(debug_dir / f"debug_binary_{len(str(binary_image.sum()))}.png"), binary_image)
     
     lower_half = binary_image[height//2:, :]
     histogram = np.sum(lower_half, axis=0)
@@ -106,32 +111,40 @@ def find_lanes_and_draw(bev_image, binary_image):
     
     window_width = 30  # Finestra di ricerca +/- 30 pixel
     
-    # Verifichiamo la linea sinistra e raccogliamo i pixel curvi
+    # Verifichiamo la linea sinistra
     left_value = histogram[left_x_base]
     print(f"🔍 LEFT ({left_x_base}): {left_value} (threshold: {min_peak_threshold}) - {'✅ DETECTED' if left_value > min_peak_threshold else '❌ MISSED'}")
     if left_value > min_peak_threshold:
         left_type = classify_lane_type(binary_image, left_x_base)
         if left_type != "None":
+            # Per lanes_bev_only: colora i pixel bianchi intorno al picco (come prima)
             mask = np.zeros_like(binary_image)
             mask[:, max(0, left_x_base - window_width):min(width, left_x_base + window_width)] = 1
             pts = (binary_image == 255) & (mask == 1)
             lanes_bev_only[pts] = (0, 255, 0)
+            
+            # Per lanes_bev_for_warping: disegna linea verticale completa
+            cv2.line(lanes_bev_for_warping, (left_x_base, 0), (left_x_base, height), (0, 255, 0), 3)
             
             cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             lane_found = True
             left_detected = True
         
-    # Verifichiamo la linea destra e raccogliamo i pixel curvi
+    # Verifichiamo la linea destra
     right_value = histogram[right_x_base]
     print(f"🔍 RIGHT ({right_x_base}): {right_value} (threshold: {min_peak_threshold}) - {'✅ DETECTED' if right_value > min_peak_threshold else '❌ MISSED'}")
     if right_value > min_peak_threshold:
         right_type = classify_lane_type(binary_image, right_x_base)
         if right_type != "None":
+            # Per lanes_bev_only: colora i pixel bianchi intorno al picco (come prima)
             mask = np.zeros_like(binary_image)
             mask[:, max(0, right_x_base - window_width):min(width, right_x_base + window_width)] = 1
             pts = (binary_image == 255) & (mask == 1)
             lanes_bev_only[pts] = (0, 255, 0)
+            
+            # Per lanes_bev_for_warping: disegna linea verticale completa
+            cv2.line(lanes_bev_for_warping, (right_x_base, 0), (right_x_base, height), (0, 255, 0), 3)
             
             cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -166,7 +179,7 @@ def find_lanes_and_draw(bev_image, binary_image):
         'binary_image_mean': np.mean(binary_image)
     }
     
-    return output_image, debug_data, lanes_bev_only
+    return output_image, debug_data, lanes_bev_only, lanes_bev_for_warping
 
 
 def main():
@@ -182,13 +195,48 @@ def main():
     # Gestisci sia l'espansione della shell che il passaggio di stringa singola
     image_paths = []
     for arg in sys.argv[1:]:
+        # Prova prima il path come fornito dall'utente
         if '*' in arg or '?' in arg:
             # Se contiene wildcard, usa glob
             matches = sorted(glob.glob(arg))
             image_paths.extend(matches)
+            
+            # Se non trova niente, prova con "dataset/" come prefix
+            if not matches:
+                alt_arg = f"dataset/{arg}"
+                matches = sorted(glob.glob(alt_arg))
+                image_paths.extend(matches)
+            
+            # Se ancora non trova, prova rimuovendo "archive/" dal path
+            if not matches:
+                alt_arg2 = arg.replace("archive/", "")
+                matches = sorted(glob.glob(alt_arg2))
+                image_paths.extend(matches)
+            
+            # ultima opzione: prova con "dataset/" + path senza "archive/"
+            if not matches:
+                alt_arg3 = f"dataset/{arg.replace('archive/', '')}"
+                matches = sorted(glob.glob(alt_arg3))
+                image_paths.extend(matches)
         else:
             # Altrimenti, trattalo come percorso singolo
-            image_paths.append(arg)
+            if Path(arg).exists():
+                image_paths.append(arg)
+            else:
+                # Prova con "dataset/" come prefix
+                alt_path = Path(f"dataset/{arg}")
+                if alt_path.exists():
+                    image_paths.append(str(alt_path))
+                else:
+                    # Prova rimuovendo "archive/"
+                    alt_path2 = Path(arg.replace("archive/", ""))
+                    if alt_path2.exists():
+                        image_paths.append(str(alt_path2))
+                    else:
+                        # ultima opzione: dataset/ + path senza archive/
+                        alt_path3 = Path(f"dataset/{arg.replace('archive/', '')}")
+                        if alt_path3.exists():
+                            image_paths.append(str(alt_path3))
     
     # Se ancora niente, prova a globbare il primo argomento
     if not image_paths and len(sys.argv) > 1:
@@ -196,6 +244,24 @@ def main():
         matches = sorted(glob.glob(arg))
         if matches:
             image_paths = matches
+        else:
+            # Prova con "dataset/" prefix
+            alt_arg = f"dataset/{arg}"
+            matches = sorted(glob.glob(alt_arg))
+            if matches:
+                image_paths = matches
+            else:
+                # Prova rimuovendo "archive/"
+                alt_arg2 = arg.replace("archive/", "")
+                matches = sorted(glob.glob(alt_arg2))
+                if matches:
+                    image_paths = matches
+                else:
+                    # ultima opzione: dataset/ + path senza archive/
+                    alt_arg3 = f"dataset/{arg.replace('archive/', '')}"
+                    matches = sorted(glob.glob(alt_arg3))
+                    if matches:
+                        image_paths = matches
     
     if not image_paths:
         print("Error: No images found at the specified path.")
@@ -240,20 +306,30 @@ def main():
         binary_bev = preprocess_bev_image(bev_image)
         
         # OBIETTIVO 2: Trova e disegna corsie estraendo le curve su 'lanes_bev_only'
-        result_bev, debug_data, lanes_bev_only = find_lanes_and_draw(bev_image, binary_bev)
+        result_bev, debug_data, lanes_bev_only, lanes_bev_for_warping = find_lanes_and_draw(bev_image, binary_bev)
         
         # Proietta linee curve sull'immagine originale
         if debug_data['lane_found']:
             # Omografia Inversa
             inv_H = np.linalg.inv(H)
             
-            # Warp Perspective: mappa la BEV con le curve verdi all'immagine originale
-            warped_lanes = cv2.warpPerspective(lanes_bev_only, inv_H, (w_orig, h_orig))
+            # Warp Perspective: mappa le linee verticali complete all'immagine originale
+            warped_lanes = cv2.warpPerspective(lanes_bev_for_warping, inv_H, (w_orig, h_orig))
             
-            # Estrai e sovrapponi solo i pixel verdi
+            # Estrai i pixel verdi dal warping
             mask_warped_green = cv2.inRange(warped_lanes, (0, 255, 0), (0, 255, 0))
+            
+            # Trova i contorni delle corsie (linee continue)
+            contours, _ = cv2.findContours(mask_warped_green, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
             original_with_lanes = original_image.copy()
-            original_with_lanes[mask_warped_green == 255] = (0, 255, 0)
+            
+            # Disegna i contorni come linee verdi continue
+            if contours:
+                cv2.drawContours(original_with_lanes, contours, -1, (0, 255, 0), 3)
+            else:
+                # Fallback: se non ci sono contorni, colora i pixel
+                original_with_lanes[mask_warped_green == 255] = (0, 255, 0)
         else:
             original_with_lanes = original_image.copy()
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -282,7 +358,7 @@ def main():
         w_orig_scaled = int(w_orig * scale_orig)
         original_resized = cv2.resize(original_with_lanes, (w_orig_scaled, display_height))
         
-        # BEV con lanes
+        # BEV con lanes (usa lanes_bev_only per visualizzazione)
         scale_bev = display_height / bev_height
         w_bev_scaled = int(bev_width * scale_bev)
         bev_resized = cv2.resize(result_bev, (w_bev_scaled, display_height))

@@ -86,14 +86,14 @@ def preprocess_bev_canny(bev_image):
 
 def preprocess_bev_tophat(bev_image):
     """
-    Implementazione esatta del filtro Dark-Light-Dark del paper GOLD (1998).
-    Formula: Out(x) = I(x) - (I(x-m) + I(x+m)) / 2
+    Implementazione esatta del filtro Dark-Light-Dark del paper GOLD (1998)
+    con l'aggiunta di un filtro geometrico (Connected Components) per 
+    rimuovere le strisce pedonali in base alla loro larghezza.
     """
     # Convertiamo in float32 per evitare overflow durante le sottrazioni
     gray = cv2.cvtColor(bev_image, cv2.COLOR_BGR2GRAY).astype(np.float32)
     
     # Il parametro 'm' del paper: la distanza dei vicini.
-    # Deve essere leggermente più grande della larghezza in pixel della corsia.
     m = 20 
     
     # Creiamo i vicini shiftando l'intera matrice a sinistra e a destra di 'm' pixel
@@ -103,49 +103,39 @@ def preprocess_bev_tophat(bev_image):
     # Applichiamo la formula di Bertozzi/Broggi
     enhanced = gray - ((left_neighbor + right_neighbor) / 2.0)
     
-    # 1. Rimuoviamo i valori negativi (tutto ciò che non rispetta il pattern diventa 0)
+    # 1. Rimuoviamo i valori negativi
     # 2. Riportiamo nel range 0-255 uint8
     enhanced = np.clip(enhanced, 0, 255).astype(np.uint8)
     
     # Binarizzazione finale
     _, binary = cv2.threshold(enhanced, 30, 255, cv2.THRESH_BINARY)
     
-    # Opzionale: rimozione rumore
+    # Pulizia del rumore (piccoli puntini)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 5))
     cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
     
-    return cleaned
-
-def preprocess_bev_tophat_robust(bev_image):
-    """
-    Top-Hat con mascheratura (ROI) per ignorare il rumore di auto e orizzonte.
-    """
-    gray = cv2.cvtColor(bev_image, cv2.COLOR_BGR2GRAY)
-    h, w = gray.shape
+    # =================================================================
+    # FILTRO STRISCE PEDONALI: "Muro Orizzontale"
+    # =================================================================
+    # Logica geometrica semplice:
+    # - BEV width: 400 pixel
+    # - Corsia singola: 10-15 pixel
+    # - 4 corsie max: ~60 pixel bianchi per riga
+    # - Strisce pedonali: 150-200+ pixel bianchi per riga
+    # 
+    # Soluzione: Se una riga ha troppi pixel bianchi (> soglia), 
+    # è una striscia pedonale e va annerita completamente
     
-    # 1. CREAZIONE MASCHERA (ROI)
-    # Ignoriamo il 40% superiore dell'immagine (dove ci sono auto deformate e cielo)
-    # Ignoriamo il 15% ai lati (marciapiedi e alberi)
-    mask = np.zeros((h, w), dtype=np.uint8)
-    margin_top = int(h * 0.40)
-    margin_side = int(w * 0.15)
+    row_white_count = np.sum(cleaned == 255, axis=1)  # Conta pixel bianchi per ogni riga
+    max_lane_pixels = 30  # Soglia: max pixel bianchi per una riga di corsie normali
     
-    # Disegniamo un rettangolo bianco solo dove vogliamo cercare le corsie
-    cv2.rectangle(mask, (margin_side, margin_top), (w - margin_side, h), 255, -1)
+    # Trova le righe che superano la soglia (strisce pedonali)
+    stripe_rows = row_white_count > max_lane_pixels
     
-    # Applichiamo la maschera: tutto ciò che è fuori diventa nero
-    gray_masked = cv2.bitwise_and(gray, mask)
+    # Annerisce completamente quelle righe
+    cleaned[stripe_rows, :] = 0
     
-    # 2. TOP-HAT (Ora lavora solo sulla strada pulita)
-    kernel_hor = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
-    tophat = cv2.morphologyEx(gray_masked, cv2.MORPH_TOPHAT, kernel_hor)
-    
-    # 3. THRESHOLD
-    _, binary = cv2.threshold(tophat, 30, 255, cv2.THRESH_BINARY)
-    
-    # 4. PULIZIA FINALE (Rimuove piccoli pallini bianchi)
-    kernel_ver = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 7))
-    cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel_ver)
+    # =================================================================
     
     return cleaned
 

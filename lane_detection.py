@@ -367,15 +367,18 @@ def ensure_dataset_available() -> bool:
         return True
     
     print("✗ Dataset not found locally")
-    # print("\n[INFO] Attempting automatic download from Kaggle...")
-    # 
-    # # Try to download from Kaggle
-    # if download_dataset_from_kaggle():
-    #     # Verify download was successful
-    #     if check_dataset_exists():
-    #         image_count = len(get_image_files())
-    #         print(f"✓ Dataset ready! ({image_count} images)")
-    #         return True
+    print("\n[INFO] Attempting automatic download from Kaggle...")
+    
+    # Try to download from Kaggle
+    if download_dataset_from_kaggle():
+        # Verify download was successful
+        if check_dataset_exists():
+            image_count = len(get_image_files())
+            print(f"✓ Dataset ready! ({image_count} images)")
+            return True
+        else:
+            print("[WARNING] Download successful but dataset structure not recognized")
+            return False
     
     # Fallback: inform user
     print("\n[WARNING] Could not download dataset automatically")
