@@ -15,88 +15,45 @@ from preprocessing import preprocess_bev_image
 from yolo import ObstacleDetector
 
 
-def fit_lane_curve(points, height, width):
+def classify_lane_type(binary_image, x_center, window_size=15):
     """
-    Fit una curva polinomiale ai punti della corsia con vincoli di coerenza.
-    
-    Vincoli:
-    - Grado massimo: 2 (una sola curva)
-    - Una sola direzione: nessun cambio verso della curvatura
-    - Ritorna: array di punti esteso per tutta l'altezza
-    """
-    if len(points) < 2:
-        return None
-    
-    points_array = np.array(points, dtype=np.float32)
-    y_vals = points_array[:, 1]
-    x_vals = points_array[:, 0]
-    
-    # 1. Calcola pendenza iniziale dai primi punti (10%)
-    num_initial = max(2, len(points) // 10)
-    initial_slope = (x_vals[num_initial-1] - x_vals[0]) / (y_vals[num_initial-1] - y_vals[0] + 1e-6)
-    
-    # 2. Fit polinomio grado 2
-    coeffs = np.polyfit(y_vals, x_vals, 2)
-    
-    # 3. Controlla se cambia verso (segno del coefficiente quadratico)
-    # Se coeffs[0] (termine quadratico) ha segno diverso dalla pendenza iniziale
-    # significa che la curva cambia direzione
-    quadratic_term = coeffs[0]
-    
-    # Se la curvatura cambia verso troppo dal previsto, usa polinomio grado 1
-    if quadratic_term != 0:
-        # Calcola il cambio di curvatura: se inverte troppo dal previsto, riduci grado
-        predicted_final_slope = initial_slope + quadratic_term * (height / 100.0)
-        
-        # Se il cambio di direzione è troppo drastico, usa linea (grado 1)
-        if np.sign(predicted_final_slope) != np.sign(initial_slope):
-            coeffs = np.polyfit(y_vals, x_vals, 1)
-    
-    # 4. Crea polinomio e genera punti per tutta l'altezza
-    poly = np.poly1d(coeffs)
-    all_y = np.arange(0, height, dtype=np.float32)
-    all_x = np.clip(poly(all_y), 0, width - 1).astype(np.int32)
-    
-    extended_points = np.column_stack((all_x, all_y.astype(np.int32)))
-    return extended_points
-
-
-def classify_lane_type(binary_image, x_center, window_size=5):
-    """
-    Classifica il tipo di linea analizzando una finestra (strip) centrata attorno alla x.
-    Usa il 'fill ratio' (rapporto tra pixel bianchi e lunghezza totale della linea).
+    Classifica il tipo di linea seguendo dinamicamente la curva (Sliding Window)
+    e calcolando il fill ratio sui pixel effettivamente percorsi dalla linea.
+    Questo previene falsi "Dashed" causati dall'uscita della curva dal box dritto.
     """
     h, w = binary_image.shape
+    current_x = x_center
+    found_y_indices = []
     
-    # 1. Estrai una piccola 'striscia' verticale intorno al centro della linea
-    x_min = max(0, x_center - window_size)
-    x_max = min(w, x_center + window_size + 1)
-    lane_strip = binary_image[:, x_min:x_max]
+    # Scorri dal basso verso l'alto seguendo la curva
+    for y in reversed(range(h)):
+        search_start = max(0, current_x - window_size)
+        search_end = min(w, current_x + window_size + 1)
+        row_search = binary_image[y, search_start:search_end]
+        
+        white_indices = np.where(row_search == 255)[0]
+        if len(white_indices) > 0:
+            # Aggiorna il centro seguendo l'andamento della corsia
+            current_x = search_start + int(np.mean(white_indices))
+            found_y_indices.append(y)
     
-    # 2. Crea un profilo 1D: per ogni riga, dimmi se c'è almeno un pixel bianco
-    vertical_profile = np.max(lane_strip, axis=1) / 255.0  # Array di 0.0 e 1.0
-    
-    # Trova dove si trovano i pixel della linea
-    non_zero_indices = np.where(vertical_profile == 1)[0]
-    
-    if len(non_zero_indices) == 0:
+    if len(found_y_indices) == 0:
         return "Unknown"
         
-    # 3. Trova l'inizio (strada lontana) e la fine (strada vicina) effettivi della linea visibile
-    top_idx = non_zero_indices[0]
-    bottom_idx = non_zero_indices[-1]
+    # Trova l'inizio (strada lontana = y minore) e fine (strada vicina = y maggiore)
+    top_y = min(found_y_indices)
+    bottom_y = max(found_y_indices)
     
-    line_length = bottom_idx - top_idx + 1
-    white_pixels = len(non_zero_indices)
+    # La lunghezza è coperta dai limiti y dove la linea esiste
+    line_length = bottom_y - top_y + 1
+    white_pixels = len(found_y_indices)
     
-    # 4. Calcola il rapporto di riempimento
-    # (Ad es. 0.9 = 90% di linea bianca continua)
+    # Rapporto di riempimento lungo *tutta* e *sola* la curva effettiva
     fill_ratio = white_pixels / line_length if line_length > 0 else 0
     
-    # 5. Restituisci la classificazione basata sul Ratio (indipendente dalla risoluzione)
-    if fill_ratio < 0.10: # Meno del 10% di pixel non è una corsia valida (solo rumore)
+    if fill_ratio < 0.10: 
         return "None"
-    elif fill_ratio > 0.80: # Soglia empirica (80% di riempimento per SOLID)
+    elif fill_ratio > 0.70: # Abbassato leggermente a 70% per compensare gap naturali 
         return "Solid"
     else:
         return "Dashed"
@@ -142,7 +99,7 @@ def find_lanes_and_draw(bev_image, binary_image):
     right_x_base = right_offset
     
     # Soglia dinamica - minimo valore per rilevare una linea
-    min_peak_threshold = int((height / 1080.0) * 5000) if height > 0 else 5000
+    min_peak_threshold = max(int((height / 1080.0) * 5000), 40 * 255)
     
     lane_found = False
     left_detected = False
@@ -163,42 +120,31 @@ def find_lanes_and_draw(bev_image, binary_image):
     if left_value > min_peak_threshold:
         left_type = classify_lane_type(binary_image, left_x_base)
         if left_type != "None":
-            # Per lanes_bev_only: colora i pixel bianchi intorno al picco (come prima)
-            mask = np.zeros_like(binary_image)
-            mask[:, max(0, left_x_base - window_width):min(width, left_x_base + window_width)] = 1
-            pts = (binary_image == 255) & (mask == 1)
-            lanes_bev_only[pts] = (0, 255, 0)
-            
-            # Per lanes_bev_for_warping: disegna linea che segue la direzione della corsia
-            # Scandisci ogni riga e trova il pixel bianco più vicino al picco
-            left_points = []
-            for y in range(height):
+            # Implementa sliding window per colorare i pixel esatti che appartengono alla corsia
+            current_x = left_x_base
+            for y in reversed(range(height)):
                 # Estrai la riga
                 row = binary_image[y, :]
-                # Cerca pixel bianchi intorno al left_x_base
-                search_start = max(0, left_x_base - window_width)
-                search_end = min(width, left_x_base + window_width)
+                # Cerca pixel bianchi intorno al current_x
+                search_start = max(0, current_x - window_width)
+                search_end = min(width, current_x + window_width)
                 row_search = row[search_start:search_end]
                 
                 # Trova i pixel bianchi in questa riga
                 white_indices = np.where(row_search == 255)[0]
                 if len(white_indices) > 0:
-                    # Usa il pixel più vicino al centro del picco
-                    center_offset = window_width
-                    distances = np.abs(white_indices - center_offset)
-                    closest_idx = np.argmin(distances)
-                    x_pos = search_start + white_indices[closest_idx]
-                    left_points.append([x_pos, y])
-            
-            # Fit polinomio ai punti trovati e estendi per tutta l'altezza
-            if len(left_points) > 2:
-                extended_left_points = fit_lane_curve(left_points, height, width)
-                if extended_left_points is not None:
-                    cv2.polylines(lanes_bev_for_warping, [extended_left_points], isClosed=False, color=(0, 255, 0), thickness=3)
-            elif len(left_points) > 0:
-                # Se pochi punti, disegna semplicemente polyline
-                left_points = np.array(left_points, dtype=np.int32)
-                cv2.polylines(lanes_bev_for_warping, [left_points], isClosed=False, color=(0, 255, 0), thickness=3)
+                    # Usa la media dei pixel trovati per la nuova x
+                    center_pos = search_start + int(np.mean(white_indices))
+                    current_x = center_pos # Aggiorna per sliding window
+                    
+                    # Colora un blocco spesso e continuo intorno al centro trovato per una massima visibilità
+                    lane_thickness = 6 # Spessore verso destra e sinistra (totale 12 pixel)
+                    draw_start = max(0, center_pos - lane_thickness)
+                    draw_end = min(width, center_pos + lane_thickness + 1)
+                    
+                    # Disegnamo la riga spessa verde brillante
+                    lanes_bev_only[y, draw_start:draw_end] = (0, 255, 0)
+                    lanes_bev_for_warping[y, draw_start:draw_end] = (0, 255, 0)
             
             cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -211,42 +157,31 @@ def find_lanes_and_draw(bev_image, binary_image):
     if right_value > min_peak_threshold:
         right_type = classify_lane_type(binary_image, right_x_base)
         if right_type != "None":
-            # Per lanes_bev_only: colora i pixel bianchi intorno al picco (come prima)
-            mask = np.zeros_like(binary_image)
-            mask[:, max(0, right_x_base - window_width):min(width, right_x_base + window_width)] = 1
-            pts = (binary_image == 255) & (mask == 1)
-            lanes_bev_only[pts] = (0, 255, 0)
-            
-            # Per lanes_bev_for_warping: disegna linea che segue la direzione della corsia
-            # Scandisci ogni riga e trova il pixel bianco più vicino al picco
-            right_points = []
-            for y in range(height):
+            # Implementa sliding window per colorare i pixel esatti che appartengono alla corsia
+            current_x = right_x_base
+            for y in reversed(range(height)):
                 # Estrai la riga
                 row = binary_image[y, :]
-                # Cerca pixel bianchi intorno al right_x_base
-                search_start = max(0, right_x_base - window_width)
-                search_end = min(width, right_x_base + window_width)
+                # Cerca pixel bianchi intorno al current_x
+                search_start = max(0, current_x - window_width)
+                search_end = min(width, current_x + window_width)
                 row_search = row[search_start:search_end]
                 
                 # Trova i pixel bianchi in questa riga
                 white_indices = np.where(row_search == 255)[0]
                 if len(white_indices) > 0:
-                    # Usa il pixel più vicino al centro del picco
-                    center_offset = window_width
-                    distances = np.abs(white_indices - center_offset)
-                    closest_idx = np.argmin(distances)
-                    x_pos = search_start + white_indices[closest_idx]
-                    right_points.append([x_pos, y])
-            
-            # Fit polinomio ai punti trovati e estendi per tutta l'altezza
-            if len(right_points) > 2:
-                extended_right_points = fit_lane_curve(right_points, height, width)
-                if extended_right_points is not None:
-                    cv2.polylines(lanes_bev_for_warping, [extended_right_points], isClosed=False, color=(0, 255, 0), thickness=3)
-            elif len(right_points) > 0:
-                # Se pochi punti, disegna semplicemente polyline
-                right_points = np.array(right_points, dtype=np.int32)
-                cv2.polylines(lanes_bev_for_warping, [right_points], isClosed=False, color=(0, 255, 0), thickness=3)
+                    # Usa la media dei pixel trovati per la nuova x
+                    center_pos = search_start + int(np.mean(white_indices))
+                    current_x = center_pos # Aggiorna per sliding window
+                    
+                    # Colora un blocco spesso e continuo intorno al centro trovato per una massima visibilità
+                    lane_thickness = 6 # Spessore verso destra e sinistra (totale 12 pixel)
+                    draw_start = max(0, center_pos - lane_thickness)
+                    draw_end = min(width, center_pos + lane_thickness + 1)
+                    
+                    # Disegnamo la riga spessa verde brillante
+                    lanes_bev_only[y, draw_start:draw_end] = (0, 255, 0)
+                    lanes_bev_for_warping[y, draw_start:draw_end] = (0, 255, 0)
             
             cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -381,12 +316,12 @@ def main():
     cx, cy = principalPoint
     h = height
     
-    # Computa omografia (IPM)
+    # Computa omografia (IPM) - GOLD Paper Style bounds
     H, (bev_width, bev_height), roi_src_points = compute_homography_matrix(
         fx, fy, cx, cy, h, pitch=pitch, 
-        x_min=-2.25, x_max=2.25, 
-        z_min=4.0, z_max=30.0,
-        bev_width=400, bev_height=800
+        x_min=-3.0, x_max=3.0,        # 6 metri totali di larghezza (previene deformazioni esterne estreme)
+        z_min=6.0, z_max=25.0,        # Distanza ad alta intensità di pixel (da subito danti al cofano a 25m)
+        bev_width=400, bev_height=800 # Canvas stretto e lungo anti-blur
     )
     
         # Ciclo su tutte le immagini
@@ -426,11 +361,14 @@ def main():
             
             original_with_lanes = original_image.copy()
             
-            # Disegna i contorni come linee verdi continue
+            # Disegna i contorni riempiendoli di verde continuo (-1 significa riempimento)
             if contours:
-                cv2.drawContours(original_with_lanes, contours, -1, (0, 255, 0), 3)
+                cv2.drawContours(original_with_lanes, contours, -1, (0, 255, 0), -1)
+                
+                # Opzionale: aggiungiamo un filo di trasparenza per far sembrare le corsie un evidenziatore (neon)
+                # cv2.addWeighted(original_image, 0.6, original_with_lanes, 0.4, 0, original_with_lanes)
             else:
-                # Fallback: se non ci sono contorni, colora i pixel
+                # Fallback: se non ci sono contorni, colora i pixel in modo pieno
                 original_with_lanes[mask_warped_green == 255] = (0, 255, 0)
         else:
             original_with_lanes = original_image.copy()

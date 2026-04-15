@@ -21,12 +21,6 @@ def preprocess_bev_sobel(bev_image):
     kernel_dilation = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     cleaned = cv2.dilate(binary_output, kernel_dilation, iterations=1)
     
-    # Rimuove le strisce pedonali
-    row_white_pixel_count = np.sum(cleaned == 255, axis=1)
-    white_pixel_threshold = np.percentile(row_white_pixel_count, 70)
-    stripe_rows = row_white_pixel_count > white_pixel_threshold
-    cleaned[stripe_rows, :] = 0
-    
     return cleaned
 
 
@@ -83,7 +77,7 @@ def preprocess_bev_canny(bev_image):
     # 9. Ritorna immagine binaria finale
     return cleaned
 
-def preprocess_bev_tophat(bev_image):
+def preprocess_bev_tophat(bev_image, debug=False):
     """
     Implementazione esatta del filtro Dark-Light-Dark del paper GOLD (1998)
     con l'aggiunta di filtraggio morfologico per unire i tratteggi e 
@@ -94,8 +88,9 @@ def preprocess_bev_tophat(bev_image):
     
     # ===== MASCHERA GIALLA (corsie gialle/arancioni) =====
     hsv = cv2.cvtColor(bev_image, cv2.COLOR_BGR2HSV)
-    lower_yellow = np.array([15, 100, 100])
-    upper_yellow = np.array([35, 255, 255])
+    # Molto più permissiva su Saturazione e Luminosità (Value) per catturare il giallo in ombra!
+    lower_yellow = np.array([10, 40, 40])
+    upper_yellow = np.array([40, 255, 255])
     mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
     
     # ===== MASCHERA BIANCA (Top-Hat sul canale grigio) =====
@@ -109,6 +104,21 @@ def preprocess_bev_tophat(bev_image):
     # Applichiamo la formula di Bertozzi/Broggi
     enhanced = gray - ((left_neighbor + right_neighbor) / 2.0)
     
+    # ===== FILTRO SPAZIALE LATERALE (Oscuramento Estremi) =====
+    # Costruiamo un moltiplicatore orizzontale che vale 1.0 al centro e tende a 0.0 (o molto basso)
+    # man mano che ci si avvicina ai bordi (sinistro e destro).
+    h_img, w_img = enhanced.shape
+    x_coords = np.arange(w_img)
+    center = w_img / 2.0
+    # Usiamo una curva parabolica: 1 - ((x - centro) / centro)^2
+    # Al centro (x=center): 1 - 0 = 1.0
+    # Ai bordi (x=0 o x=w): 1 - 1 = 0.0
+    spatial_falloff = 1.0 - ((x_coords - center) / center)**2
+    spatial_falloff = np.clip(spatial_falloff, 0, 1.0).astype(np.float32)
+    
+    # Moltiplichiamo la mappa 'enhanced' per far decadere la luminosità ai lati
+    enhanced = enhanced * spatial_falloff
+    
     # Rimuoviamo i valori negativi e riportiamo nel range uint8
     enhanced = np.clip(enhanced, 0, 255).astype(np.uint8)
     
@@ -118,47 +128,51 @@ def preprocess_bev_tophat(bev_image):
     # ===== UNIONE DELLE MASCHERE (BIANCA + GIALLA) =====
     combined = cv2.bitwise_or(binary, mask_yellow)
     
-    # =================================================================
-    # FASE 1: RIMOZIONE POLVERE (Opening)
-    # Rimuove i piccoli pixel isolati prima che possano unirsi
-    # =================================================================
-    kernel_dust = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-    cleaned = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel_dust)
+    # ===== CLOSING MORFOLOGICO: Fonde i segmenti sparsi (es. macchie auto) in un sol blocco =====
+    kernel_close = cv2.getStructuringElement(cv2.MORPH_RECT, (7, 7))
+    combined_closed = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel_close)
     
-    # =================================================================
-    # FASE 2: UNIONE TRATTEGGI (Closing Verticale)
-    # Usa un kernel stretto e alto per fondere le strisce interrotte
-    # =================================================================
-    kernel_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 40)) 
-    cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel_connect, iterations=2)
-    
-    # =================================================================
-    # FASE 3: FILTRO AREA (Rimozione rumore residuo)
-    # Elimina gruppi di pixel che non hanno una massa sufficiente
-    # =================================================================
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(cleaned, connectivity=8)
-    min_valid_area = 150  # Area minima per essere considerata una corsia valida
+    # ===== FILTRO OSTACOLI DENSI (Auto e grossi blocchi) =====
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(combined_closed, connectivity=8)
     
     for i in range(1, num_labels):
+        width = stats[i, cv2.CC_STAT_WIDTH]
         area = stats[i, cv2.CC_STAT_AREA]
-        if area < min_valid_area:
-            cleaned[labels == i] = 0  # Annerisce il rumore
-            
-    # =================================================================
-    # FASE 4: FILTRO STRISCE PEDONALI ("Muro Orizzontale")
-    # =================================================================
-    row_white_count = np.sum(cleaned == 255, axis=1) 
+        height_bb = stats[i, cv2.CC_STAT_HEIGHT]
+        
+        # Le corsie continue (solide) coprono un'Area elevata e, curvando, hanno una Larghezza (Width) elevata.
+        # Se un blocco è larghissimo (es auto) ed ha una elevata "compattezza/area", lo cancelliamo.
+        # Un bounding box di un'auto è compatto (>6000). La corsia curva è sparpagliata e lunga.
+        if width > 150 and area > 8000:
+            combined[labels == i] = 0
+
+    # ===== FILTRO VERTICALITÀ (Azzardo: Strisce contigue in altezza) =====
+    # Usiamo un'apertura (Opening) morfologica con un kernel stretto e alto 4 pixel.
+    # La logica matematica di questo filtro è identica alla tua richiesta:
+    # Sopravvivono SOLO e unicamente i pixel che fanno parte di un blocco bianco
+    # ininterrotto di almeno 4 pixel sull'asse Y (cioè y, y+1, y+2, y+3).
+    # I puntini orizzontali o isolati si azzerano.
+    # kernel_vert = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 4))
+    # combined = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel_vert)
+
+    # ===== FILTRO COLONNE (Rumore di fondo strutturale orizzontale) =====
+    img_height = combined.shape[0]
     
-    # Aumentato a 45 perché ora le linee, essendo unite, potrebbero 
-    # generare un po' più di pixel bianchi per singola riga.
-    max_lane_pixels = 45 
+    # Somma pixel bianchi SOLO nella metà inferiore (allineato all'istogramma)
+    lower_half = combined[img_height//2:, :]
+    col_sums = np.sum(lower_half == 255, axis=0)
     
-    stripe_rows = row_white_count > max_lane_pixels
-    cleaned[stripe_rows, :] = 0
+    # Soglia minima: se in quella colonna, nella metà inferiore, ci sono meno di 5 pixel totali
+    # azzeriamo l'intera colonna (elimina rumore microscopico verticale).
+    min_pixels_lower = 5
+    invalid_cols = col_sums < min_pixels_lower
+    combined[:, invalid_cols] = 0
     
-    return cleaned
+    if debug:
+        return combined, binary, mask_yellow
+    return combined
 # Alias per compatibilità (di default usa Sobel)
-def preprocess_bev_image(bev_image):
+def preprocess_bev_image(bev_image, debug=False):
     """
     Funzione di default che usa Sobel.
     Cambia questa riga in run_gold.py per provare altri algoritmi:
@@ -166,4 +180,4 @@ def preprocess_bev_image(bev_image):
     - preprocess_bev_canny()
     - preprocess_bev_tophat()
     """
-    return preprocess_bev_tophat(bev_image)
+    return preprocess_bev_tophat(bev_image, debug=debug)
