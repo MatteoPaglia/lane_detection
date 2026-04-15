@@ -83,16 +83,22 @@ def preprocess_bev_canny(bev_image):
     # 9. Ritorna immagine binaria finale
     return cleaned
 
-
 def preprocess_bev_tophat(bev_image):
     """
     Implementazione esatta del filtro Dark-Light-Dark del paper GOLD (1998)
-    con l'aggiunta di un filtro geometrico (Connected Components) per 
-    rimuovere le strisce pedonali in base alla loro larghezza.
+    con l'aggiunta di filtraggio morfologico per unire i tratteggi e 
+    il filtro a muro orizzontale per rimuovere le strisce pedonali.
     """
     # Convertiamo in float32 per evitare overflow durante le sottrazioni
     gray = cv2.cvtColor(bev_image, cv2.COLOR_BGR2GRAY).astype(np.float32)
     
+    # ===== MASCHERA GIALLA (corsie gialle/arancioni) =====
+    hsv = cv2.cvtColor(bev_image, cv2.COLOR_BGR2HSV)
+    lower_yellow = np.array([15, 100, 100])
+    upper_yellow = np.array([35, 255, 255])
+    mask_yellow = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    
+    # ===== MASCHERA BIANCA (Top-Hat sul canale grigio) =====
     # Il parametro 'm' del paper: la distanza dei vicini.
     m = 20 
     
@@ -103,42 +109,54 @@ def preprocess_bev_tophat(bev_image):
     # Applichiamo la formula di Bertozzi/Broggi
     enhanced = gray - ((left_neighbor + right_neighbor) / 2.0)
     
-    # 1. Rimuoviamo i valori negativi
-    # 2. Riportiamo nel range 0-255 uint8
+    # Rimuoviamo i valori negativi e riportiamo nel range uint8
     enhanced = np.clip(enhanced, 0, 255).astype(np.uint8)
     
     # Binarizzazione finale
     _, binary = cv2.threshold(enhanced, 30, 255, cv2.THRESH_BINARY)
     
-    # Pulizia del rumore (piccoli puntini)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 5))
-    cleaned = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    # ===== UNIONE DELLE MASCHERE (BIANCA + GIALLA) =====
+    combined = cv2.bitwise_or(binary, mask_yellow)
     
     # =================================================================
-    # FILTRO STRISCE PEDONALI: "Muro Orizzontale"
+    # FASE 1: RIMOZIONE POLVERE (Opening)
+    # Rimuove i piccoli pixel isolati prima che possano unirsi
     # =================================================================
-    # Logica geometrica semplice:
-    # - BEV width: 400 pixel
-    # - Corsia singola: 10-15 pixel
-    # - 4 corsie max: ~60 pixel bianchi per riga
-    # - Strisce pedonali: 150-200+ pixel bianchi per riga
-    # 
-    # Soluzione: Se una riga ha troppi pixel bianchi (> soglia), 
-    # è una striscia pedonale e va annerita completamente
+    kernel_dust = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    cleaned = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel_dust)
     
-    row_white_count = np.sum(cleaned == 255, axis=1)  # Conta pixel bianchi per ogni riga
-    max_lane_pixels = 30  # Soglia: max pixel bianchi per una riga di corsie normali
+    # =================================================================
+    # FASE 2: UNIONE TRATTEGGI (Closing Verticale)
+    # Usa un kernel stretto e alto per fondere le strisce interrotte
+    # =================================================================
+    kernel_connect = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 40)) 
+    cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_CLOSE, kernel_connect, iterations=2)
     
-    # Trova le righe che superano la soglia (strisce pedonali)
+    # =================================================================
+    # FASE 3: FILTRO AREA (Rimozione rumore residuo)
+    # Elimina gruppi di pixel che non hanno una massa sufficiente
+    # =================================================================
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(cleaned, connectivity=8)
+    min_valid_area = 150  # Area minima per essere considerata una corsia valida
+    
+    for i in range(1, num_labels):
+        area = stats[i, cv2.CC_STAT_AREA]
+        if area < min_valid_area:
+            cleaned[labels == i] = 0  # Annerisce il rumore
+            
+    # =================================================================
+    # FASE 4: FILTRO STRISCE PEDONALI ("Muro Orizzontale")
+    # =================================================================
+    row_white_count = np.sum(cleaned == 255, axis=1) 
+    
+    # Aumentato a 45 perché ora le linee, essendo unite, potrebbero 
+    # generare un po' più di pixel bianchi per singola riga.
+    max_lane_pixels = 45 
+    
     stripe_rows = row_white_count > max_lane_pixels
-    
-    # Annerisce completamente quelle righe
     cleaned[stripe_rows, :] = 0
     
-    # =================================================================
-    
     return cleaned
-
 # Alias per compatibilità (di default usa Sobel)
 def preprocess_bev_image(bev_image):
     """
