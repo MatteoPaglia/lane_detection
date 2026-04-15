@@ -137,8 +137,8 @@ def find_lanes_and_draw(bev_image, binary_image):
                     center_pos = search_start + int(np.mean(white_indices))
                     current_x = center_pos # Aggiorna per sliding window
                     
-                    # Colora un blocco spesso e continuo intorno al centro trovato per una massima visibilità
-                    lane_thickness = 6 # Spessore verso destra e sinistra (totale 12 pixel)
+                    # Colora un blocco sottile intorno al centro
+                    lane_thickness = 1 # Spessore verso destra e sinistra (totale 3 pixel)
                     draw_start = max(0, center_pos - lane_thickness)
                     draw_end = min(width, center_pos + lane_thickness + 1)
                     
@@ -174,8 +174,8 @@ def find_lanes_and_draw(bev_image, binary_image):
                     center_pos = search_start + int(np.mean(white_indices))
                     current_x = center_pos # Aggiorna per sliding window
                     
-                    # Colora un blocco spesso e continuo intorno al centro trovato per una massima visibilità
-                    lane_thickness = 6 # Spessore verso destra e sinistra (totale 12 pixel)
+                    # Colora un blocco sottile intorno al centro
+                    lane_thickness = 1 # Spessore verso destra e sinistra (totale 3 pixel)
                     draw_start = max(0, center_pos - lane_thickness)
                     draw_end = min(width, center_pos + lane_thickness + 1)
                     

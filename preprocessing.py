@@ -142,18 +142,22 @@ def preprocess_bev_tophat(bev_image, debug=False):
         
         # Le corsie continue (solide) coprono un'Area elevata e, curvando, hanno una Larghezza (Width) elevata.
         # Se un blocco è larghissimo (es auto) ed ha una elevata "compattezza/area", lo cancelliamo.
-        # Un bounding box di un'auto è compatto (>6000). La corsia curva è sparpagliata e lunga.
-        if width > 150 and area > 8000:
+        # Rimuoviamo anche TUTTE LE MACCHIE PICCOLE (Area < 20) prima che la dilatazione le faccia esplodere.
+        if (width > 150 and area > 8000) or area < 20:
             combined[labels == i] = 0
 
-    # ===== FILTRO VERTICALITÀ (Azzardo: Strisce contigue in altezza) =====
-    # Usiamo un'apertura (Opening) morfologica con un kernel stretto e alto 4 pixel.
-    # La logica matematica di questo filtro è identica alla tua richiesta:
-    # Sopravvivono SOLO e unicamente i pixel che fanno parte di un blocco bianco
-    # ininterrotto di almeno 4 pixel sull'asse Y (cioè y, y+1, y+2, y+3).
-    # I puntini orizzontali o isolati si azzerano.
-    # kernel_vert = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 4))
-    # combined = cv2.morphologyEx(combined, cv2.MORPH_OPEN, kernel_vert)
+    # ===== FILTRO VERTICALITÀ E DENSITÀ (Enfatizzazione linee) =====
+    # Come da tua richiesta: dopo aver scremato il rumore, prendiamo tutto il bianco
+    # "buono" rimasto e lo Ingrassiamo ed Allunghiamo pesantemente.
+    # Un kernel verticale (es: 3 di larghezza e 15 di altezza) farà esplodere
+    # ogni debole segnale tratteggiato trasformandolo in un denso rettangolo bianco,
+    # aiutando massicciamente l'istogramma a vedere le linee deboli sulla destra!
+    kernel_dilate = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 15))
+    combined = cv2.dilate(combined, kernel_dilate, iterations=1)
+    
+    # Chiudiamo anche eventuali buchi rimasti all'interno dei rettangoli appena creati
+    kernel_close_final = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 15))
+    combined = cv2.morphologyEx(combined, cv2.MORPH_CLOSE, kernel_close_final)
 
     # ===== FILTRO COLONNE (Rumore di fondo strutturale orizzontale) =====
     img_height = combined.shape[0]
