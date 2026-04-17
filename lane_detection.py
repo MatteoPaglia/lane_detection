@@ -916,7 +916,7 @@ def classify_lane_type(histogram_value):
         return "Dashed"
 
 
-def find_lanes_and_draw(bev_image, binary_image):
+def find_lanes_and_draw(bev_image, binary_image, draw_full_height=False):
     """
     Calcola l'istogramma sulla metà inferiore dell'immagine binaria, trova i picchi
     e disegna le linee rilevate. Usa una soglia dinamica basata sull'altezza dell'immagine.
@@ -962,14 +962,19 @@ def find_lanes_and_draw(bev_image, binary_image):
     left_type = None
     right_type = None
     
+    # Determina da dove far partire la linea (Y iniziale) 
+    # per disegnare su tutta l'altezza o solo sulla metà inferiore
+    start_y = 0 if draw_full_height else height // 2
+    text_y = 40 if draw_full_height else (height // 2) + 40
+    
     # Verifichiamo e disegniamo la linea sinistra
     left_value = histogram[left_x_base]
     if left_value > min_peak_threshold:
-        cv2.line(output_image, (left_x_base, 0), (left_x_base, height), (0, 255, 0), 3)
+        cv2.line(output_image, (left_x_base, start_y), (left_x_base, height), (0, 255, 0), 3)
         # Classifica il tipo di linea
         left_type = classify_lane_type(left_value)
         # Disegna il tipo di linea sulla BEV (in alto a sinistra della linea)
-        cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), 40), 
+        cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), text_y), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         lane_found = True
         left_detected = True
@@ -977,11 +982,11 @@ def find_lanes_and_draw(bev_image, binary_image):
     # Verifichiamo e disegniamo la linea destra
     right_value = histogram[right_x_base]
     if right_value > min_peak_threshold:
-        cv2.line(output_image, (right_x_base, 0), (right_x_base, height), (0, 255, 0), 3)
+        cv2.line(output_image, (right_x_base, start_y), (right_x_base, height), (0, 255, 0), 3)
         # Classifica il tipo di linea
         right_type = classify_lane_type(right_value)
         # Disegna il tipo di linea sulla BEV (in alto a destra della linea)
-        cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), 40), 
+        cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), text_y), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
         lane_found = True
         right_detected = True
