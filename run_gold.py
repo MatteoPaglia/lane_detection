@@ -53,7 +53,7 @@ def classify_lane_type(binary_image, x_center, window_size=15):
     
     if fill_ratio < 0.10: 
         return "None"
-    elif fill_ratio > 0.70: # Abbassato leggermente a 70% per compensare gap naturali 
+    elif fill_ratio > 0.85: # Alzato all'85% per evitare falsi positivi su linee tratteggiate molto dense
         return "Solid"
     else:
         return "Dashed"
