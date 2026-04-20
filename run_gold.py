@@ -139,30 +139,13 @@ def find_lanes_and_draw(bev_image, binary_image):
                 xs = np.array([p[0] for p in lane_pixels])
                 ys = np.array([p[1] for p in lane_pixels])
                 
-                if left_type == "Solid" and len(ys) >= 3:
-                    # Polyfit lineare o quadratico (assicura una linea continua smussata)
-                    poly_coeffs = np.polyfit(ys, xs, 2)
-                    poly_fn = np.poly1d(poly_coeffs)
-                    
-                    min_y = int(np.min(ys))
-                    max_y = int(np.max(ys))
-                    plot_y = np.arange(min_y, max_y + 1)
-                    plot_x = np.clip(poly_fn(plot_y).astype(int), 0, width - 1)
-                    
-                    # Disegna la linea interpolata continua (3x3 su ogni punto)
-                    for x, y in zip(plot_x, plot_y):
-                        y_start, y_end = max(0, y-1), min(height, y+2)
-                        x_start, x_end = max(0, x-1), min(width, x+2)
-                        lanes_bev_only[y_start:y_end, x_start:x_end] = (0, 255, 0)
-                        lanes_bev_for_warping[y_start:y_end, x_start:x_end] = (0, 255, 0)
-                        
-                else:
-                    # Dashed: colora solo un quadratino 3x3 per ogni pixel bianco rilevato (che fa un quadrato)
-                    for x, y in lane_pixels:
-                        y_start, y_end = max(0, y-1), min(height, y+2)
-                        x_start, x_end = max(0, x-1), min(width, x+2)
-                        lanes_bev_only[y_start:y_end, x_start:x_end] = (0, 255, 0)
-                        lanes_bev_for_warping[y_start:y_end, x_start:x_end] = (0, 255, 0)
+                # Disegna una linea verde continua larga 5px seguendo i pixel estratti
+                for x, y in lane_pixels:
+                    # Spessore linea 5px: 2 pixel su ogni lato + centro
+                    y_start, y_end = max(0, y-2), min(height, y+3)
+                    x_start, x_end = max(0, x-2), min(width, x+3)
+                    lanes_bev_only[y_start:y_end, x_start:x_end] = (0, 255, 0)
+                    lanes_bev_for_warping[y_start:y_end, x_start:x_end] = (0, 255, 0)
             
             cv2.putText(output_image, f"L:{left_type}", (max(0, left_x_base - 60), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -194,30 +177,13 @@ def find_lanes_and_draw(bev_image, binary_image):
                 xs = np.array([p[0] for p in lane_pixels])
                 ys = np.array([p[1] for p in lane_pixels])
                 
-                if right_type == "Solid" and len(ys) >= 3:
-                    # Polyfit lineare/quadratico (assicura una linea continua smussata)
-                    poly_coeffs = np.polyfit(ys, xs, 2)
-                    poly_fn = np.poly1d(poly_coeffs)
-                    
-                    min_y = int(np.min(ys))
-                    max_y = int(np.max(ys))
-                    plot_y = np.arange(min_y, max_y + 1)
-                    plot_x = np.clip(poly_fn(plot_y).astype(int), 0, width - 1)
-                    
-                    # Disegna la linea interpolata continua (3x3 su ogni intero dal min al max)
-                    for x, y in zip(plot_x, plot_y):
-                        y_start, y_end = max(0, y-1), min(height, y+2)
-                        x_start, x_end = max(0, x-1), min(width, x+2)
-                        lanes_bev_only[y_start:y_end, x_start:x_end] = (0, 255, 0)
-                        lanes_bev_for_warping[y_start:y_end, x_start:x_end] = (0, 255, 0)
-                        
-                else:
-                    # Dashed: colora solo un quadratino 3x3 per ogni pixel bianco rilevato (che fa un quadrato)
-                    for x, y in lane_pixels:
-                        y_start, y_end = max(0, y-1), min(height, y+2)
-                        x_start, x_end = max(0, x-1), min(width, x+2)
-                        lanes_bev_only[y_start:y_end, x_start:x_end] = (0, 255, 0)
-                        lanes_bev_for_warping[y_start:y_end, x_start:x_end] = (0, 255, 0)
+                # Disegna una linea verde continua larga 5px seguendo i pixel estratti
+                for x, y in lane_pixels:
+                    # Spessore linea 5px: 2 pixel su ogni lato + centro
+                    y_start, y_end = max(0, y-2), min(height, y+3)
+                    x_start, x_end = max(0, x-2), min(width, x+3)
+                    lanes_bev_only[y_start:y_end, x_start:x_end] = (0, 255, 0)
+                    lanes_bev_for_warping[y_start:y_end, x_start:x_end] = (0, 255, 0)
             
             cv2.putText(output_image, f"R:{right_type}", (min(width - 100, right_x_base + 10), 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
